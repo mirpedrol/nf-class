@@ -20,6 +20,34 @@ log = logging.getLogger(__name__)
 
 
 class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
+    """
+    Create a new module or subworkflow from a class.
+
+    Args:
+        ctx (dict): Click context object.
+        component_type (str): Type of component to create. [modules|subworkflows]
+        directory (str): Directory to create the component in. [default: <current directory>]
+        classname (str): Name of the class to create the component from.
+        component (str): Name of the component to create.
+        author (str): Author of the component.
+        force (bool): Overwrite existing files.
+        conda_name (str): Name of the conda environment.
+        conda_version (str): Version of the conda environment.
+
+    Attributes:
+        modules_repo (nf_core.modules.modules_repo.ModulesRepo): Modules repository object.
+        classname (str): Name of the class to create the component from.
+        inputs_yml (str): Inputs of the class in yaml format.
+        outputs_yml (str): Outputs of the class in yaml format.
+        inputs (str): Inputs of the class in string format.
+        outputs (str): Outputs of the class in string format.
+        input_vars (list): List of input variables.
+        output_vars (list): List of output variables.
+
+    Raises:
+        UserWarning: If trying to create a components for a pipeline instead of a modules repository.
+    """
+
     def __init__(
         self,
         ctx,
@@ -51,6 +79,9 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         self.classname = classname
 
     def create_from_class(self) -> None:
+        """
+        Create a new module or subworkflow from a class.
+        """
         if self.repo_type == "pipelines":
             raise UserWarning("Creating components from classes is not supported for pipelines.")
 
@@ -99,6 +130,9 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         log.info("Created following files:\n  " + "\n  ".join(new_files))
 
     def _get_qualifier(self, type: str) -> str:
+        """
+        Get the qualifier for the input/output type.
+        """
         if type in ["map", "string", "integer", "float", "boolean"]:
             return "val"
         elif type in ["file", "directory"]:
@@ -106,6 +140,9 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         return ""
 
     def _get_class_info(self) -> None:
+        """
+        Get class information from the class yml file.
+        """
         # Read class yml
         base_url = f"https://raw.githubusercontent.com/{self.modules_repo.fullname}/{self.modules_repo.branch}/classes/{self.classname}.yml"
         response = requests.get(base_url)
