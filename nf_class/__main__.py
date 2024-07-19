@@ -12,6 +12,7 @@ import rich.traceback
 import rich_click as click
 
 from nf_class import __version__
+from nf_class.modules.create import ModuleCreateFromClass
 from nf_class.utils import NF_CLASS_MODULES_REMOTE, check_if_outdated, nf_class_logo
 from nf_core.utils import rich_force_colors
 
@@ -34,7 +35,7 @@ click.rich_click.COMMAND_GROUPS = {
     "nf-class modules": [
         {
             "name": "Developing new modules",
-            "commands": ["create-from-template"],
+            "commands": ["create-from-class"],
         },
     ],
 }
@@ -186,10 +187,19 @@ def modules(ctx, git_remote, branch, no_pull):
     ctx.obj["modules_repo_no_pull"] = no_pull
 
 
-# nf-core modules create-from-template
-@modules.command("create-from-template")
+# nf-core modules create-from-class
+@modules.command("create-from-class")
 @click.pass_context
-@click.argument("module-class", type=str, callback=normalize_case, required=False)
+@click.argument("classname", type=str, callback=normalize_case, required=False, metavar="<class_name>")
+@click.option(
+    "-t",
+    "--toolname",
+    type=str,
+    callback=normalize_case,
+    required=False,
+    help="Name of the tool of the module to create.",
+    metavar="<tool_name>",
+)
 @click.option(
     "-d",
     "--dir",
@@ -226,9 +236,10 @@ def modules(ctx, git_remote, branch, no_pull):
     default=None,
     help="Version of conda package to use",
 )
-def command_modules_create_from_template(
+def command_modules_create_from_class(
     ctx,
-    module_class,
+    classname,
+    toolname,
     dir,
     author,
     force,
@@ -238,4 +249,19 @@ def command_modules_create_from_template(
     """
     Create a new DSL2 module from a class-module template.
     """
-    print("hi")
+    try:
+        create_obj = ModuleCreateFromClass(
+            ctx,
+            classname,
+            toolname,
+            dir,
+            author,
+            force,
+            conda_name,
+            conda_package_version,
+        )
+        create_obj.create_from_class()
+    except UserWarning as e:
+        raise e
+    except LookupError as e:
+        raise e

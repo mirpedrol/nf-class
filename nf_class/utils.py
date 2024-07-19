@@ -20,15 +20,6 @@ nf_class_logo = [
 ]
 
 
-def rich_force_colors():
-    """
-    Check if any environment variables are set to force Rich to use coloured output
-    """
-    if os.getenv("GITHUB_ACTIONS") or os.getenv("FORCE_COLOR") or os.getenv("PY_COLORS"):
-        return True
-    return None
-
-
 def fetch_remote_version(source_url):
     response = requests.get(source_url, timeout=3)
     remote_version = re.sub(r"[^0-9\.]", "", response.data.tag_name)
