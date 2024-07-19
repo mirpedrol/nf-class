@@ -12,7 +12,8 @@ import rich.traceback
 import rich_click as click
 
 from nf_class import __version__
-from nf_class.utils import NF_CLASS_MODULES_REMOTE, check_if_outdated, nf_class_logo, rich_force_colors
+from nf_class.utils import NF_CLASS_MODULES_REMOTE, check_if_outdated, nf_class_logo
+from nf_core.utils import rich_force_colors
 
 # Set up logging as the root logger
 # Submodules should all traverse back to this
