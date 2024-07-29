@@ -48,6 +48,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
 
     Raises:
         UserWarning: If trying to create a components for a pipeline instead of a modules repository.
+        UserWarning: If the required class name doesn't exist.
     """
 
     def __init__(
@@ -78,7 +79,6 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         self.modules_repo = nf_core.modules.modules_repo.ModulesRepo(
             ctx.obj["modules_repo_url"], ctx.obj["modules_repo_branch"]
         )
-        # self.modules_repo.setup_local_repo(self.modules_repo.remote_rul, self.modules_repo.branch)
         self.classname = classname
 
     def create_from_class(self) -> None:
@@ -171,7 +171,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         directory = Path(self.modules_repo.local_repo_dir) / "classes"
         available_classes = [
             fn.split(".yml")[0]
-            for dirpath, _, file_names in directory.walk()
+            for _, _, file_names in directory.walk()
             for fn in file_names
             if fn.endswith(".yml")
         ]
