@@ -4,11 +4,13 @@ from pathlib import Path
 from typing import Optional
 
 import jinja2
+import questionary
 import requests
 import yaml
 
 import nf_class
-import nf_core.components.components_utils
+
+# import nf_core.components.components_utils
 import nf_core.components.create
 
 # TODO: include this once new version of nf-core is released
@@ -76,6 +78,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         self.modules_repo = nf_core.modules.modules_repo.ModulesRepo(
             ctx.obj["modules_repo_url"], ctx.obj["modules_repo_branch"]
         )
+        # self.modules_repo.setup_local_repo(self.modules_repo.remote_rul, self.modules_repo.branch)
         self.classname = classname
 
     def create_from_class(self) -> None:
@@ -87,6 +90,9 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
 
         if self.directory != ".":
             log.info(f"Base directory: '{self.directory}'")
+
+        # Get the class name
+        self._collect_class_prompt()
 
         # Get the component name
         self._collect_name_prompt()
@@ -138,6 +144,38 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         elif type in ["file", "directory"]:
             return "path"
         return ""
+
+    def _collect_class_prompt(self) -> None:
+        """
+        Prompt for the class name.
+        """
+        available_classes = self._get_available_classes()
+        while self.classname is None or self.classname == "":
+            self.classname = questionary.autocomplete(
+                "Class name:",
+                choices=available_classes,
+                style=nf_core.utils.nfcore_question_style,
+            ).unsafe_ask()
+        if self.classname and self.classname not in available_classes:
+            raise UserWarning(f"Class '{self.classname}' not found.")
+
+    def _get_available_classes(self, checkout=True, commit=None) -> list:
+        """
+        Get the available classes from the modules repository.
+        """
+        if checkout:
+            self.modules_repo.checkout_branch()
+        if commit is not None:
+            self.modules_repo.checkout(commit)
+
+        directory = Path(self.modules_repo.local_repo_dir) / "classes"
+        available_classes = [
+            fn.split(".yml")[0]
+            for dirpath, _, file_names in directory.walk()
+            for fn in file_names
+            if fn.endswith(".yml")
+        ]
+        return sorted(available_classes)
 
     def _get_class_info(self) -> None:
         """

@@ -12,7 +12,6 @@ import rich.traceback
 import rich_click as click
 
 from nf_class import __version__
-from nf_class.modules.create import ModuleCreateFromClass
 from nf_class.utils import NF_CLASS_MODULES_REMOTE, check_if_outdated, nf_class_logo
 from nf_core.utils import rich_force_colors
 
@@ -46,16 +45,6 @@ stdout = rich.console.Console(force_terminal=rich_force_colors())
 
 # Set up the rich traceback
 rich.traceback.install(console=stderr, width=200, word_wrap=True, extra_lines=1)
-
-
-# Define exceptions for which no traceback should be printed,
-# because they are actually preliminary, but intended program terminations.
-def selective_traceback_hook(exctype, value, traceback):
-    # print the colored traceback for all exceptions with rich
-    stderr.print(rich.traceback.Traceback.from_exception(exctype, value, traceback))
-
-
-sys.excepthook = selective_traceback_hook
 
 
 # Define callback function to normalize the case of click arguments,
@@ -190,7 +179,7 @@ def modules(ctx, git_remote, branch, no_pull):
 # nf-core modules create-from-class
 @modules.command("create-from-class")
 @click.pass_context
-@click.argument("classname", type=str, callback=normalize_case, required=False, metavar="<class_name>")
+@click.argument("classname", type=str, callback=normalize_case, required=False, default="", metavar="<class_name>")
 @click.option(
     "-t",
     "--toolname",
@@ -249,6 +238,8 @@ def command_modules_create_from_class(
     """
     Create a new DSL2 module from a class-module template.
     """
+    from nf_class.modules.create import ModuleCreateFromClass
+
     try:
         create_obj = ModuleCreateFromClass(
             ctx,
@@ -262,6 +253,8 @@ def command_modules_create_from_class(
         )
         create_obj.create_from_class()
     except UserWarning as e:
-        raise e
+        log.error(e)
+        sys.exit(1)
     except LookupError as e:
-        raise e
+        log.error(e)
+        sys.exit(1)
