@@ -22,9 +22,10 @@ process {{ component_name_underscore|upper }} {
     // TODO nf-class: Update the command to run the tool
     """
     {{ component }} \
+        -t ${task.cpus} \
         $args \
-        {{ input_vars | join('\\ \n') }} \
-        {{ output_vars | join('\\ \n') }}
+        {{ input_vars | join('\\ \n\t\t') }} \
+        {{ output_vars | join('\\ \n\t\t') }}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -35,8 +36,9 @@ process {{ component_name_underscore|upper }} {
     stub:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
+    // TODO nf-class: Update the output files to generate
     """
-    touch {{ output_vars | join('\\ \n') }}
+    touch {{ output_vars | join('\\ \n\t\t') }}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

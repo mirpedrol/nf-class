@@ -34,7 +34,7 @@ click.rich_click.COMMAND_GROUPS = {
     "nf-class modules": [
         {
             "name": "Developing new modules",
-            "commands": ["create-from-template"],
+            "commands": ["create-from-class"],
         },
     ],
 }
@@ -45,16 +45,6 @@ stdout = rich.console.Console(force_terminal=rich_force_colors())
 
 # Set up the rich traceback
 rich.traceback.install(console=stderr, width=200, word_wrap=True, extra_lines=1)
-
-
-# Define exceptions for which no traceback should be printed,
-# because they are actually preliminary, but intended program terminations.
-def selective_traceback_hook(exctype, value, traceback):
-    # print the colored traceback for all exceptions with rich
-    stderr.print(rich.traceback.Traceback.from_exception(exctype, value, traceback))
-
-
-sys.excepthook = selective_traceback_hook
 
 
 # Define callback function to normalize the case of click arguments,
@@ -186,10 +176,19 @@ def modules(ctx, git_remote, branch, no_pull):
     ctx.obj["modules_repo_no_pull"] = no_pull
 
 
-# nf-core modules create-from-template
-@modules.command("create-from-template")
+# nf-core modules create-from-class
+@modules.command("create-from-class")
 @click.pass_context
-@click.argument("module-class", type=str, callback=normalize_case, required=False)
+@click.argument("classname", type=str, callback=normalize_case, required=False, default="", metavar="<class_name>")
+@click.option(
+    "-t",
+    "--toolname",
+    type=str,
+    callback=normalize_case,
+    required=False,
+    help="Name of the tool of the module to create.",
+    metavar="<tool_name>",
+)
 @click.option(
     "-d",
     "--dir",
@@ -226,9 +225,10 @@ def modules(ctx, git_remote, branch, no_pull):
     default=None,
     help="Version of conda package to use",
 )
-def command_modules_create_from_template(
+def command_modules_create_from_class(
     ctx,
-    module_class,
+    classname,
+    toolname,
     dir,
     author,
     force,
@@ -238,4 +238,23 @@ def command_modules_create_from_template(
     """
     Create a new DSL2 module from a class-module template.
     """
-    print("hi")
+    from nf_class.modules.create import ModuleCreateFromClass
+
+    try:
+        create_obj = ModuleCreateFromClass(
+            ctx,
+            classname,
+            toolname,
+            dir,
+            author,
+            force,
+            conda_name,
+            conda_package_version,
+        )
+        create_obj.create_from_class()
+    except UserWarning as e:
+        log.error(e)
+        sys.exit(1)
+    except LookupError as e:
+        log.error(e)
+        sys.exit(1)
