@@ -17,6 +17,7 @@ import nf_core.components.create
 # import nf_core.pipelines.lint_utils
 import nf_core.lint_utils
 import nf_core.modules.modules_repo
+from nf_core.utils import nfcore_question_style
 
 log = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
             # Try to find a bioconda package for 'component'
             self._get_bioconda_tool()
             # Try to find a biotools entry for 'component'
-            # TODO: Add biotools when the nf-core/tools PR is  merged to dev
+            # TODO: Add biotools when the nf-core/tools PR is merged to dev
             # self.tool_identifier = nf_core.components.components_utils.get_biotools_id(self.component)
 
         # Prompt for GitHub username
@@ -154,7 +155,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
             self.classname = questionary.autocomplete(
                 "Class name:",
                 choices=available_classes,
-                style=nf_core.utils.nfcore_question_style,
+                style=nfcore_question_style,
             ).unsafe_ask()
         if self.classname and self.classname not in available_classes:
             raise UserWarning(f"Class '{self.classname}' not found.")
@@ -170,10 +171,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
 
         directory = Path(self.modules_repo.local_repo_dir) / "classes"
         available_classes = [
-            fn.split(".yml")[0]
-            for _, _, file_names in directory.walk()
-            for fn in file_names
-            if fn.endswith(".yml")
+            fn.split(".yml")[0] for _, _, file_names in directory.walk() for fn in file_names if fn.endswith(".yml")
         ]
         return sorted(available_classes)
 
@@ -190,9 +188,9 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         self.description = content["description"]
         self.keywords = content["keywords"]
         self.inputs_yml = yaml.safe_load(str(content["input"]))
-        self.inputs_yml = yaml.dump({"input": self.inputs_yml})
+        self.inputs_yml_str = yaml.dump({"input": self.inputs_yml})
         self.outputs_yml = yaml.safe_load(str(content["output"]))
-        self.outputs_yml = yaml.dump({"output": self.outputs_yml})
+        self.outputs_yml_str = yaml.dump({"output": self.outputs_yml})
         # Obtain input channels
         self.inputs = ""
         self.input_vars = []

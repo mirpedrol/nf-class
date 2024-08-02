@@ -28,6 +28,7 @@ click.rich_click.COMMAND_GROUPS = {
             "name": "Commands",
             "commands": [
                 "modules",
+                "subworkflows",
             ],
         },
     ],
@@ -35,6 +36,12 @@ click.rich_click.COMMAND_GROUPS = {
         {
             "name": "Developing new modules",
             "commands": ["create-from-class"],
+        },
+    ],
+    "nf-class subworkflows": [
+        {
+            "name": "Developing new subworkflows",
+            "commands": ["expand-class"],
         },
     ],
 }
@@ -88,7 +95,7 @@ def run_nf_class():
             log.debug(f"Could not check latest version: {e}")
         stderr.print("\n")
     # Launch the click cli
-    nf_core_cli(auto_envvar_prefix="NFCLASS")
+    nf_class_cli(auto_envvar_prefix="NFCLASS")
 
 
 @click.group(context_settings=dict(help_option_names=["-h", "--help"]), cls=CustomRichGroup)
@@ -103,7 +110,7 @@ def run_nf_class():
 @click.option("--hide-progress", is_flag=True, default=False, help="Don't show progress bars.")
 @click.option("-l", "--log-file", help="Save a verbose log to a file.", metavar="<filename>")
 @click.pass_context
-def nf_core_cli(ctx, verbose, hide_progress, log_file):
+def nf_class_cli(ctx, verbose, hide_progress, log_file):
     """
     nf-class is a wrapper to nf.core/tools and provides a set of helper tools for use with class-modules.
     """
@@ -139,7 +146,7 @@ def nf_core_cli(ctx, verbose, hide_progress, log_file):
 
 
 # nf-class modules
-@nf_core_cli.group()
+@nf_class_cli.group()
 @click.option(
     "-g",
     "--git-remote",
@@ -256,5 +263,127 @@ def command_modules_create_from_class(
         log.error(e)
         sys.exit(1)
     except LookupError as e:
+        log.error(e)
+        sys.exit(1)
+
+
+# nf-class subworkflows
+@nf_class_cli.group()
+@click.option(
+    "-g",
+    "--git-remote",
+    type=str,
+    default=NF_CLASS_MODULES_REMOTE,
+    help="Remote git repo to fetch files from",
+)
+@click.option(
+    "-b",
+    "--branch",
+    type=str,
+    default=None,
+    help="Branch of git repository hosting modules and subworkflows.",
+)
+@click.option(
+    "-N",
+    "--no-pull",
+    is_flag=True,
+    default=False,
+    help="Do not pull in latest changes to local clone of modules repository.",
+)
+@click.pass_context
+def subworkflows(ctx, git_remote, branch, no_pull):
+    """
+    Commands to manage Nextflow DSL2 subworkflows.
+    """
+    # ensure that ctx.obj exists and is a dict (in case `cli()` is called
+    # by means other than the `if` block below)
+    ctx.ensure_object(dict)
+
+    # Place the arguments in a context object
+    ctx.obj["modules_repo_url"] = git_remote
+    ctx.obj["modules_repo_branch"] = branch
+    ctx.obj["modules_repo_no_pull"] = no_pull
+
+
+# nf-core subworkflows expand-class
+@subworkflows.command("expand-class")
+@click.pass_context
+@click.argument("classname", type=str, callback=normalize_case, required=False, default="", metavar="<class_name>")
+@click.option(
+    "-d",
+    "--dir",
+    type=click.Path(exists=True),
+    default=".",
+    help=r"Modules repository directory. [dim]\[default: current working directory][/]",
+    metavar="<directory>",
+)
+@click.option(
+    "-a",
+    "--author",
+    type=str,
+    metavar="<author>",
+    help="Subworkflow author's GitHub username prefixed with '@'",
+)
+@click.option(
+    "-f",
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Overwrite any files if they already exist",
+)
+@click.option(
+    "-m",
+    "--expand-modules",
+    type=str,
+    default=None,
+    help="Name of the modules the subworkflow should expand, separated by commas. If not provided, all available modules for the class will be expanded.",
+)
+@click.option(
+    "-p",
+    "--prefix",
+    type=str,
+    default="",
+    help="Prefix for the subworkflow name [<prefix>_classname_<suffix>].",
+)
+@click.option(
+    "-s",
+    "--suffix",
+    type=str,
+    default="",
+    help="Suffix for the subworkflow name [<prefix>_classname_<suffix>].",
+)
+def command_subworkflows_expand_class(
+    ctx,
+    classname,
+    dir,
+    author,
+    force,
+    expand_modules,
+    prefix,
+    suffix,
+):
+    """
+    Create a new DSL2 subworkflow from a class.
+    """
+    from nf_class.subworkflows.create import SubworkflowExpandClass
+
+    try:
+        create_obj = SubworkflowExpandClass(
+            ctx,
+            classname,
+            dir,
+            author,
+            force,
+            expand_modules,
+            prefix,
+            suffix,
+        )
+        create_obj.expand_class()
+    except UserWarning as e:
+        raise
+        log.error(e)
+        sys.exit(1)
+    except LookupError as e:
+        raise
         log.error(e)
         sys.exit(1)
