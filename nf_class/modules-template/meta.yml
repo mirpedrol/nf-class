@@ -13,9 +13,9 @@ tools:
       licence: {{ tool_licence }}
       identifier: {{ tool_identifier }}
 
-{{ inputs_yml }}
+{{ inputs_yml_str }}
 
-{{ outputs_yml }}
+{{ outputs_yml_str }}
 
 authors:
   - "{{ author }}"

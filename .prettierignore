@@ -1,4 +1,5 @@
-nf_class/modules-template/meta.yml
+nf_class/modules-template/
+nf_class/subworkflows-template/
 # don't run on things handled by ruff
 *.py
 *.pyc

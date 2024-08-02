@@ -1,0 +1,13 @@
+nextflow_workflow {
+
+    name "Test Subworkflow {{ component_name_underscore|upper }}"
+    script "../main.nf"
+    workflow "{{ component_name_underscore|upper }}"
+
+    tag "subworkflows"
+    tag "subworkflows_{{ org_alphabet }}"
+    tag "subworkflows/{{ component_name }}"
+{{ components_tags }}
+
+{{ tests }}
+}
