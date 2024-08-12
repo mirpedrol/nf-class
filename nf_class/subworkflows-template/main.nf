@@ -10,7 +10,7 @@ workflow {{ component_name_underscore|upper }} {
     ch_versions = Channel.empty()
 
     {{ run_module }}
-    ch_versions = ch_versions.mix({{ classname }}.out.versions)
+    ch_versions = ch_versions.mix({{ classname|upper }}.out.versions)
 
     emit:
 {{ output_channels }}
