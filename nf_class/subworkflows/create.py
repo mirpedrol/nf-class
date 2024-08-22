@@ -104,8 +104,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 start = "if"
                 first = False
             else:
-                start = "elif"
-            self.include_statements += f"""{start} ( params.{self.classname} == "{component}" ) {{\n    include {{ {component.replace("/", "_").upper()} as {self.classname.upper()} }} from '../../../modules/{self.org}/{component}/main.'\n}} """
+                start = "else if"
+            self.include_statements += f"""{start} ( params.{self.classname} == "{component}" ) {{\n    include {{ {component.replace("/", "_").upper()} as {self.classname.upper()} }} from '../../../modules/{self.org}/{component}/main'\n}} """
 
         # Naming input channels
         input_channels = []
@@ -115,7 +115,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             for element in channel:
                 element_keys.append(list(element.keys())[0])
                 all_channels_elements.append(element_keys)
-            if element_keys[0] == "meta":
+            if element_keys[0] == "meta" or element_keys[0].startswith("meta"):
                 input_channels.append(f"ch_{element_keys[1]}")
             else:
                 input_channels.append(f"ch_{element_keys[0]}")
