@@ -15,7 +15,6 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
     Expand a new subworkflow with modules from a class.
 
     Args:
-        ctx (dict): Click context object.
         classname (str): Name of the class to expand the subworkflow.
         dir (str): Directory to create the subworkflow in. [default: <current directory>]
         author (str): Author of the subworkflow.
@@ -23,11 +22,12 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         expand_modules (str): List of modules to expand the subworkflow with.
         prefix (str): Prefix for the subworkflow name [<prefix>_classname_<suffix>].
         suffix (str): Suffix for the subworkflow name [<prefix>_classname_<suffix>].
+        modules_repo_url (str): URL of the modules repository.
+        modules_repo_branch (str): Branch of the modules repository.
     """
 
     def __init__(
         self,
-        ctx,
         classname: str = "",
         dir: str = ".",
         author: Optional[str] = None,
@@ -35,10 +35,11 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         expand_modules: str = "",
         prefix: str = "",
         suffix: str = "",
+        modules_repo_url: Optional[str] = None,
+        modules_repo_branch: Optional[str] = None,
     ):
         subworkflow_name = f"{prefix}{'_' if prefix else ''}{classname}{'_' if suffix else ''}{suffix}"
         super().__init__(
-            ctx,
             "subworkflows",
             dir,
             classname,
@@ -47,6 +48,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             force,
             None,
             None,
+            modules_repo_url,
+            modules_repo_branch,
         )
         self.classname = classname
         self.expand_modules = expand_modules or ""
@@ -65,8 +68,6 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         # Check existence of directories early for fast-fail
 
         self.file_paths = self._get_component_dirs()
-        # TODO: remove this lines once the new version of nf-core/tools is released
-        self.file_paths.pop("tests/tags.yml")
 
         # Prompt for GitHub username
         self._get_username()
