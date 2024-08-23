@@ -6,6 +6,7 @@ from typing import Optional
 import yaml
 
 from nf_class.components.create import ComponentCreateFromClass
+from nf_class.utils import NF_CLASS_MODULES_REMOTE
 
 log = logging.getLogger(__name__)
 
@@ -35,8 +36,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         expand_modules: str = "",
         prefix: str = "",
         suffix: str = "",
-        modules_repo_url: Optional[str] = None,
-        modules_repo_branch: Optional[str] = None,
+        modules_repo_url: Optional[str] = NF_CLASS_MODULES_REMOTE,
+        modules_repo_branch: Optional[str] = "main",
     ):
         subworkflow_name = f"{prefix}{'_' if prefix else ''}{classname}{'_' if suffix else ''}{suffix}"
         super().__init__(
@@ -56,8 +57,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
 
     def expand_class(self):
         """Expand the subworkflow with modules from a class."""
-        if self.dir != ".":
-            log.info(f"Base directory: '{self.dir}'")
+        if self.directory != ".":
+            log.info(f"Base directory: '{self.directory}'")
 
         # Get the class name
         self._collect_class_prompt()
@@ -170,12 +171,12 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         if self.expand_modules != "":
             self.components = self.expand_modules.split(",")
             for module in self.components:
-                module_dir = Path(self.dir, "modules", self.org, module)
+                module_dir = Path(self.directory, "modules", self.org, module)
                 if not module_dir.exists():
                     log.info(f"Module '{module}' not found. Skipping.")
                     self.components.remove(module)
         else:
-            modules_dir = Path(self.dir, "modules", self.org)
+            modules_dir = Path(self.directory, "modules", self.org)
             self.components = []
             for root, dirs, files in modules_dir.walk():
                 for module in dirs:
@@ -237,7 +238,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
     def _generate_nftest_code(self) -> None:
         """Generate the code for nf-tests."""
         self.tests = ""
-        modules_dir = Path(self.dir, "modules", self.org)
+        modules_dir = Path(self.directory, "modules", self.org)
         for component in self.components:
             module_inputs = []
             module_asserts = []
