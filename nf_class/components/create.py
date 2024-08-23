@@ -12,11 +12,11 @@ import nf_class
 
 # import nf_core.components.components_utils
 import nf_core.components.create
+import nf_core.modules.modules_repo
 
 # TODO: include this once new version of nf-core is released
 # import nf_core.pipelines.lint_utils
-import nf_core.lint_utils
-import nf_core.modules.modules_repo
+import nf_core.pipelines.lint_utils
 from nf_core.utils import nfcore_question_style
 
 log = logging.getLogger(__name__)
@@ -256,7 +256,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
                 fh.write(rendered_output)
             # TODO: change line once new version of nf-core is released
             # nf_core.pipelines.lint_utils.run_prettier_on_file(dest_fn)
-            nf_core.lint_utils.run_prettier_on_file(dest_fn)
+            nf_core.pipelines.lint_utils.run_prettier_on_file(dest_fn)
 
             # Mirror file permissions
             template_stat = (Path(nf_class.__file__).parent / f"{self.component_type}-template" / template_fn).stat()
