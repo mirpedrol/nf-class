@@ -255,6 +255,9 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                             if line.strip().startswith("run("):
                                 composed_name = line.split('"')[1].lower()
                                 composed_name = re.sub(r"_", "/", composed_name)
+                                # Add composed module to tags
+                                if composed_name not in self.components_tags:
+                                    self.components_tags += f"""\ttag "{composed_name}"\n"""
                             if line.strip().startswith("script"):
                                 # update path for subworkflow
                                 line_split = line.split('"')
@@ -262,7 +265,6 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                                     line_split[0]
                                     + f'"../../../../modules/{self.org}/{composed_name}/main.nf"'
                                     + line_split[2]
-                                    + "\n"
                                 )
                             setup_code += line
                             line = next(lines)
