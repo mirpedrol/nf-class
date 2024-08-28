@@ -249,7 +249,6 @@ def command_modules_create_from_class(
 
     try:
         create_obj = ModuleCreateFromClass(
-            ctx,
             classname,
             toolname,
             dir,
@@ -257,6 +256,8 @@ def command_modules_create_from_class(
             force,
             conda_name,
             conda_package_version,
+            ctx.obj["modules_repo_url"],
+            ctx.obj["modules_repo_branch"],
         )
         create_obj.create_from_class()
     except UserWarning as e:
@@ -369,7 +370,6 @@ def command_subworkflows_expand_class(
 
     try:
         create_obj = SubworkflowExpandClass(
-            ctx,
             classname,
             dir,
             author,
@@ -377,13 +377,13 @@ def command_subworkflows_expand_class(
             expand_modules,
             prefix,
             suffix,
+            ctx.obj["modules_repo_url"],
+            ctx.obj["modules_repo_branch"],
         )
         create_obj.expand_class()
     except UserWarning as e:
-        raise
         log.error(e)
         sys.exit(1)
     except LookupError as e:
-        raise
         log.error(e)
         sys.exit(1)

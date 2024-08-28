@@ -12,11 +12,12 @@ import nf_class
 
 # import nf_core.components.components_utils
 import nf_core.components.create
+import nf_core.modules.modules_repo
 
 # TODO: include this once new version of nf-core is released
 # import nf_core.pipelines.lint_utils
-import nf_core.lint_utils
-import nf_core.modules.modules_repo
+import nf_core.pipelines.lint_utils
+from nf_class.utils import NF_CLASS_MODULES_REMOTE
 from nf_core.utils import nfcore_question_style
 
 log = logging.getLogger(__name__)
@@ -27,7 +28,6 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
     Create a new module or subworkflow from a class.
 
     Args:
-        ctx (dict): Click context object.
         component_type (str): Type of component to create. [modules|subworkflows]
         directory (str): Directory to create the component in. [default: <current directory>]
         classname (str): Name of the class to create the component from.
@@ -54,7 +54,6 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
 
     def __init__(
         self,
-        ctx,
         component_type: str,
         directory: str = ".",
         classname: str = "",
@@ -63,6 +62,8 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         force: bool = False,
         conda_name: Optional[str] = None,
         conda_version: Optional[str] = None,
+        modules_repo_url: Optional[str] = NF_CLASS_MODULES_REMOTE,
+        modules_repo_branch: Optional[str] = "main",
     ):
         super().__init__(
             component_type=component_type,
@@ -77,9 +78,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
             empty_template=False,
             migrate_pytest=False,
         )
-        self.modules_repo = nf_core.modules.modules_repo.ModulesRepo(
-            ctx.obj["modules_repo_url"], ctx.obj["modules_repo_branch"]
-        )
+        self.modules_repo = nf_core.modules.modules_repo.ModulesRepo(modules_repo_url, modules_repo_branch)
         self.classname = classname
 
     def create_from_class(self) -> None:
@@ -109,8 +108,6 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
 
         # Check existence of directories early for fast-fail
         self.file_paths = self._get_component_dirs()
-        # TODO: remove this lines once the new version of nf-core/tools is released
-        self.file_paths.pop("tests/tags.yml")
 
         if self.component_type == "modules":
             # Try to find a bioconda package for 'component'
@@ -254,9 +251,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
             with open(dest_fn, "w") as fh:
                 log.debug(f"Writing output to: '{dest_fn}'")
                 fh.write(rendered_output)
-            # TODO: change line once new version of nf-core is released
-            # nf_core.pipelines.lint_utils.run_prettier_on_file(dest_fn)
-            nf_core.lint_utils.run_prettier_on_file(dest_fn)
+            nf_core.pipelines.lint_utils.run_prettier_on_file(dest_fn)
 
             # Mirror file permissions
             template_stat = (Path(nf_class.__file__).parent / f"{self.component_type}-template" / template_fn).stat()

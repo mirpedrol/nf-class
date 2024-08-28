@@ -6,6 +6,7 @@ from typing import Optional
 import yaml
 
 from nf_class.components.create import ComponentCreateFromClass
+from nf_class.utils import NF_CLASS_MODULES_REMOTE
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +16,6 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
     Expand a new subworkflow with modules from a class.
 
     Args:
-        ctx (dict): Click context object.
         classname (str): Name of the class to expand the subworkflow.
         dir (str): Directory to create the subworkflow in. [default: <current directory>]
         author (str): Author of the subworkflow.
@@ -23,11 +23,12 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         expand_modules (str): List of modules to expand the subworkflow with.
         prefix (str): Prefix for the subworkflow name [<prefix>_classname_<suffix>].
         suffix (str): Suffix for the subworkflow name [<prefix>_classname_<suffix>].
+        modules_repo_url (str): URL of the modules repository.
+        modules_repo_branch (str): Branch of the modules repository.
     """
 
     def __init__(
         self,
-        ctx,
         classname: str = "",
         dir: str = ".",
         author: Optional[str] = None,
@@ -35,10 +36,11 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         expand_modules: str = "",
         prefix: str = "",
         suffix: str = "",
+        modules_repo_url: Optional[str] = NF_CLASS_MODULES_REMOTE,
+        modules_repo_branch: Optional[str] = "main",
     ):
         subworkflow_name = f"{prefix}{'_' if prefix else ''}{classname}{'_' if suffix else ''}{suffix}"
         super().__init__(
-            ctx,
             "subworkflows",
             dir,
             classname,
@@ -47,14 +49,16 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             force,
             None,
             None,
+            modules_repo_url,
+            modules_repo_branch,
         )
         self.classname = classname
         self.expand_modules = expand_modules or ""
 
     def expand_class(self):
         """Expand the subworkflow with modules from a class."""
-        if self.dir != ".":
-            log.info(f"Base directory: '{self.dir}'")
+        if self.directory != ".":
+            log.info(f"Base directory: '{self.directory}'")
 
         # Get the class name
         self._collect_class_prompt()
@@ -65,8 +69,6 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         # Check existence of directories early for fast-fail
 
         self.file_paths = self._get_component_dirs()
-        # TODO: remove this lines once the new version of nf-core/tools is released
-        self.file_paths.pop("tests/tags.yml")
 
         # Prompt for GitHub username
         self._get_username()
@@ -169,12 +171,12 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         if self.expand_modules != "":
             self.components = self.expand_modules.split(",")
             for module in self.components:
-                module_dir = Path(self.dir, "modules", self.org, module)
+                module_dir = Path(self.directory, "modules", self.org, module)
                 if not module_dir.exists():
                     log.info(f"Module '{module}' not found. Skipping.")
                     self.components.remove(module)
         else:
-            modules_dir = Path(self.dir, "modules", self.org)
+            modules_dir = Path(self.directory, "modules", self.org)
             self.components = []
             for root, dirs, files in modules_dir.walk():
                 for module in dirs:
@@ -236,7 +238,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
     def _generate_nftest_code(self) -> None:
         """Generate the code for nf-tests."""
         self.tests = ""
-        modules_dir = Path(self.dir, "modules", self.org)
+        modules_dir = Path(self.directory, "modules", self.org)
         for component in self.components:
             module_inputs = []
             module_asserts = []
