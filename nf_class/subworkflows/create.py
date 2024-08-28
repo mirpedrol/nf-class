@@ -247,8 +247,27 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 lines = iter(fh.readlines())
                 found_input = False
                 found_test = False
+                setup_code = ""
                 for line in lines:
-                    if re.sub(r"\s", "", line).startswith("process") and "{" in line:
+                    if re.sub(r"\s", "", line).startswith("setup") and "{" in line:
+                        # This is a composed module
+                        while "when {" not in line:
+                            if line.strip().startswith("run("):
+                                composed_name = line.split('"')[1].lower()
+                                composed_name = re.sub(r"_", "/", composed_name)
+                            if line.strip().startswith("script"):
+                                # update path for subworkflow
+                                line_split = line.split('"')
+                                line = (
+                                    line_split[0]
+                                    + f'"../../../../modules/{self.org}/{composed_name}/main.nf"'
+                                    + line_split[2]
+                                    + "\n"
+                                )
+                            setup_code += line
+                            line = next(lines)
+                    elif re.sub(r"\s", "", line).startswith("process") and "{" in line:
+                        # Inputs for the module
                         line = next(lines)
                         while re.sub(r"\s", "", line) != "}":
                             module_inputs.append(line)
@@ -262,4 +281,4 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                     if found_input and found_test:
                         break
             # Construct subworkflow tests
-            self.tests += f"""\ttest("run {component}") {{\n\n\t\twhen {{\n\t\t\tparams.{self.classname} = "{component}"\n\t\t\tworkflow {{\n{''.join(module_inputs)}\t\t\t}}\n\t\t}}\n\n{''.join(module_asserts)}\t\t}}\n\t}}\n\n"""
+            self.tests += f"""\ttest("run {component}") {{\n\n{setup_code}\t\twhen {{\n\t\t\tparams.{self.classname} = "{component}"\n\t\t\tworkflow {{\n{''.join(module_inputs)}\t\t\t}}\n\t\t}}\n\n{''.join(module_asserts)}\t\t}}\n\t}}\n\n"""
