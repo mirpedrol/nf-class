@@ -172,9 +172,3 @@ jobs:
           coverage combine --keep coverage*/.coverage*
           coverage report
           coverage xml
-
-      - uses: codecov/codecov-action@5ecb98a3c6b747ed38dc09f787459979aebb39be # v4
-        with:
-          files: coverage.xml
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
