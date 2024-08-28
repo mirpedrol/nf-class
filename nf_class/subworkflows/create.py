@@ -278,6 +278,11 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                     if "then" in line:
                         while re.sub(r"\s", "", line) != "}":
                             line = re.sub(r"process.", "workflow.", line)
+                            if "match(" in line:
+                                # give a new name to snapshot to avoid duplications
+                                line_split = line.split('"')
+                                channel_name = line.split("workflow.out.")[1].split(")")[0]
+                                line = line_split[0] + f'"{component.replace("/", "_")}_{channel_name}"' + line_split[2]
                             module_asserts.append(line)
                             line = next(lines)
                         found_test = True
