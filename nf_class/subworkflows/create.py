@@ -275,6 +275,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                         found_input = True
                     if "then" in line:
                         while re.sub(r"\s", "", line) != "}":
+                            line = re.sub(r"process.", "workflow.", line)
                             module_asserts.append(line)
                             line = next(lines)
                         found_test = True
