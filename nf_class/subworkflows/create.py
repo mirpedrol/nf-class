@@ -3,10 +3,12 @@ import re
 from pathlib import Path
 from typing import Optional
 
+import questionary
 import yaml
 
 from nf_class.components.create import ComponentCreateFromClass
 from nf_class.utils import NF_CLASS_MODULES_REMOTE
+from nf_core.utils import nfcore_question_style
 
 log = logging.getLogger(__name__)
 
@@ -39,6 +41,18 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         modules_repo_url: Optional[str] = NF_CLASS_MODULES_REMOTE,
         modules_repo_branch: Optional[str] = "main",
     ):
+        while prefix == "" and suffix == "":
+            log.info("Please provide a prefix or suffix for the subworkflow name.")
+            prefix = questionary.text(
+                "Prefix:",
+                default="",
+                style=nfcore_question_style,
+            ).unsafe_ask()
+            suffix = questionary.text(
+                "Suffix:",
+                default="",
+                style=nfcore_question_style,
+            ).unsafe_ask()
         subworkflow_name = f"{prefix}{'_' if prefix else ''}{classname}{'_' if suffix else ''}{suffix}"
         super().__init__(
             "subworkflows",
@@ -247,8 +261,29 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 lines = iter(fh.readlines())
                 found_input = False
                 found_test = False
+                setup_code = ""
                 for line in lines:
-                    if re.sub(r"\s", "", line).startswith("process") and "{" in line:
+                    if re.sub(r"\s", "", line).startswith("setup") and "{" in line:
+                        # This is a composed module
+                        while "when {" not in line:
+                            if line.strip().startswith("run("):
+                                composed_name = line.split('"')[1].lower()
+                                composed_name = re.sub(r"_", "/", composed_name)
+                                # Add composed module to tags
+                                if composed_name not in self.components_tags:
+                                    self.components_tags += f"""\ttag "{composed_name}"\n"""
+                            if line.strip().startswith("script"):
+                                # update path for subworkflow
+                                line_split = line.split('"')
+                                line = (
+                                    line_split[0]
+                                    + f'"../../../../modules/{self.org}/{composed_name}/main.nf"'
+                                    + line_split[2]
+                                )
+                            setup_code += line
+                            line = next(lines)
+                    elif re.sub(r"\s", "", line).startswith("process") and "{" in line:
+                        # Inputs for the module
                         line = next(lines)
                         while re.sub(r"\s", "", line) != "}":
                             module_inputs.append(line)
@@ -256,10 +291,16 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                         found_input = True
                     if "then" in line:
                         while re.sub(r"\s", "", line) != "}":
+                            line = re.sub(r"process.", "workflow.", line)
+                            if "match(" in line:
+                                # give a new name to snapshot to avoid duplications
+                                line_split = line.split('"')
+                                channel_name = line.split("workflow.out.")[1].split(")")[0]
+                                line = line_split[0] + f'"{component.replace("/", "_")}_{channel_name}"' + line_split[2]
                             module_asserts.append(line)
                             line = next(lines)
                         found_test = True
                     if found_input and found_test:
                         break
             # Construct subworkflow tests
-            self.tests += f"""\ttest("run {component}") {{\n\n\t\twhen {{\n\t\t\tparams.{self.classname} = "{component}"\n\t\t\tworkflow {{\n{''.join(module_inputs)}\t\t\t}}\n\t\t}}\n\n{''.join(module_asserts)}\t\t}}\n\t}}\n\n"""
+            self.tests += f"""\ttest("run {component}") {{\n\n{setup_code}\t\twhen {{\n\t\t\tparams.{self.classname} = "{component}"\n\t\t\tworkflow {{\n{''.join(module_inputs)}\t\t\t}}\n\t\t}}\n\n{''.join(module_asserts)}\t\t}}\n\t}}\n\n"""
