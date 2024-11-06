@@ -114,14 +114,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
 
         # Generated code for include statements
         self.include_statements = ""
-        first = True
         for component in self.components:
-            if first:
-                start = "if"
-                first = False
-            else:
-                start = "else if"
-            self.include_statements += f"""{start} ( params.{self.classname} == "{component}" ) {{\n    include {{ {component.replace("/", "_").upper()} as {self.classname.upper()} }} from '../../../modules/{self.org}/{component}/main'\n}} """
+            self.include_statements += f"""include {{ {component.replace("/", "_").upper()} }} from '../../../modules/{self.org}/{component}/main'\n"""
 
         # Naming input channels
         input_channels = []
@@ -150,19 +144,13 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             )
         self.inputs_yml_swf: str = yaml.dump(inputs_yml_swf)
 
-        # Code for running the included module
-        self.run_module = f"{self.classname.upper()} ( {", ".join(input_channels)} )"
-
         # Generate code for output channels
         out_channel_names = []
         for channel in self.outputs_yml:
             out_channel_names.append(list(channel.keys())[0])
         self.output_channels = ""
         for out_channel in out_channel_names:
-            out = f"{self.classname.upper()}.out.{out_channel}"
-            if out_channel == "versions":
-                out = "ch_versions"
-            self.output_channels += f"\t{out_channel} = {out}\n"
+            self.output_channels += f"\t{out_channel} = ch_out_{out_channel}\n"
 
         # Yml output channels
         outputs_yml_swf: dict = {"output": []}
@@ -176,6 +164,25 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 }
             )
         self.outputs_yml_swf: str = yaml.dump(outputs_yml_swf)
+
+        # Code for running the included module
+        self.run_module = ""
+        for out_channel in out_channel_names:
+            self.run_module += f"\tdef ch_out_{out_channel} = Channel.empty()\n"
+        first = True
+        for component in self.components:
+            if first:
+                start = "if"
+                first = False
+            else:
+                start = "else if"
+            module_name = component.replace("/", "_").upper()
+            self.run_module += f"""\t{start} ( params.{self.classname} == "{component}" ) {{\n\t\t{module_name}( {", ".join(input_channels)} )\n"""
+            for out_channel in out_channel_names:
+                self.run_module += (
+                    f"\t\tch_out_{out_channel} = ch_out_{out_channel}.mix({module_name}.out.{out_channel})\n"
+                )
+            self.run_module += "\t}\n"
 
         # nf-tests
         self._generate_nftest_code()
