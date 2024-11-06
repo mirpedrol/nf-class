@@ -91,11 +91,6 @@ jobs:
           python -m pip install --upgrade pip -r requirements-dev.txt
           pip install -e .
 
-      - name: Install dev version of nf-core
-        # reinstall the dev version of nf-core until v3.0.0 is released
-        run: |
-          pip install --upgrade --force-reinstall git+https://github.com/nf-core/tools.git@dev
-
       - name: Downgrade git to the Ubuntu official repository's version
         if: ${{ needs.setup.outputs.runner == 'ubuntu-20.04' && needs.setup.outputs.python-version == '3.8' }}
         run: |
