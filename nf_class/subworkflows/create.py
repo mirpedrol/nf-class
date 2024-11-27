@@ -71,6 +71,9 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
 
     def expand_class(self):
         """Expand the subworkflow with modules from a class."""
+        if self.repo_type == "pipelines":
+            raise UserWarning("Expanding a subworkflow from a class is not supported for pipelines.")
+
         if self.directory != ".":
             log.info(f"Base directory: '{self.directory}'")
 
