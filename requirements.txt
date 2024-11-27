@@ -1,1 +1,1 @@
-nf-core
+nf-core==3.0.*
