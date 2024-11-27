@@ -8,4 +8,4 @@
 - Add pytests [#5](https://github.com/mirpedrol/nf-class/pull/5)
 - Handle composed modules when expanding a subworkflow [#6](https://github.com/mirpedrol/nf-class/pull/6)
 - Modify `expand-class` command to avoid conditional includes [#8](https://github.com/mirpedrol/nf-class/pull/8)
-- Don't allow expanding a subworkflow in a pipelines repo [#10](https://github.com/mirpedrol/nf-class/pull/10)
+- Don't allow expanding a subworkflow in a pipelines repo & pin nf-core version [#10](https://github.com/mirpedrol/nf-class/pull/10)
