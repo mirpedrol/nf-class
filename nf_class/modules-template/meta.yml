@@ -3,6 +3,7 @@ name: "{{ component_name_underscore }}"
 description: {{ description }}
 keywords:
   {{ keywords }}
+class: "{{ classname }}"
 tools:
   - "{{ component }}":
       description: "{{ tool_description }}"
