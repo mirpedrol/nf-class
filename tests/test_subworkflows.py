@@ -39,15 +39,11 @@ class TestSubworkflows(unittest.TestCase):
         subworkflow_expand = nf_class.subworkflows.create.SubworkflowExpandClass(
             classname="alignment",
             dir=self.class_modules,
-            prefix="my",
-            suffix="test",
             author="@me",
         )
         subworkflow_expand.expand_class()
-        assert (self.class_modules / "subworkflows" / "mirpedrol" / "my_alignment_test" / "main.nf").is_file()
-        assert (
-            self.class_modules / "subworkflows" / "mirpedrol" / "my_alignment_test" / "tests" / "main.nf.test"
-        ).is_file()
+        assert (self.class_modules / "subworkflows" / "mirpedrol" / "alignment" / "main.nf").is_file()
+        assert (self.class_modules / "subworkflows" / "mirpedrol" / "alignment" / "tests" / "main.nf.test").is_file()
 
         # Check that all modules have been included
         included_modules = []
@@ -60,7 +56,7 @@ class TestSubworkflows(unittest.TestCase):
             "MAGUS_ALIGN",
             "TCOFFEE_ALIGN",
         ]
-        with open(self.class_modules / "subworkflows" / "mirpedrol" / "my_alignment_test" / "main.nf") as fh:
+        with open(self.class_modules / "subworkflows" / "mirpedrol" / "alignment" / "main.nf") as fh:
             for line in fh:
                 if line.lstrip().startswith("include"):
                     included_modules.append(line.split()[2])
@@ -74,21 +70,17 @@ class TestSubworkflows(unittest.TestCase):
         subworkflow_expand = nf_class.subworkflows.create.SubworkflowExpandClass(
             classname="alignment",
             dir=self.class_modules,
-            prefix="my",
-            suffix="test",
             author="@me",
             expand_modules="clustalo/align,famsa/align",
         )
         subworkflow_expand.expand_class()
-        assert (self.class_modules / "subworkflows" / "mirpedrol" / "my_alignment_test" / "main.nf").is_file()
-        assert (
-            self.class_modules / "subworkflows" / "mirpedrol" / "my_alignment_test" / "tests" / "main.nf.test"
-        ).is_file()
+        assert (self.class_modules / "subworkflows" / "mirpedrol" / "alignment" / "main.nf").is_file()
+        assert (self.class_modules / "subworkflows" / "mirpedrol" / "alignment" / "tests" / "main.nf.test").is_file()
 
         # Check that specified modules have been included
         included_modules = []
         should_have_modules = ["CLUSTALO_ALIGN", "FAMSA_ALIGN"]
-        with open(self.class_modules / "subworkflows" / "mirpedrol" / "my_alignment_test" / "main.nf") as fh:
+        with open(self.class_modules / "subworkflows" / "mirpedrol" / "alignment" / "main.nf") as fh:
             for line in fh:
                 if line.lstrip().startswith("include"):
                     included_modules.append(line.split()[2])

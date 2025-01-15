@@ -90,6 +90,4 @@ nf-class subworkflows expand-class <classname>
 - `--author` `-a`: Subworkflow author's GitHub username prefixed with '@'.
 - `--force` `-f`: Overwrite any files if they already exist.
 - `--expand-modules` `-m`: Name of the modules the subworkflow should expand, separated by commas. If not provided, all available modules for the class will be expanded.
-- `--prefix` `-p`: Prefix for the subworkflow name [<prefix>_classname_<suffix>].
-- `--suffix` `-s`: Suffix for the subworkflow name [<prefix>_classname_<suffix>].
 - `--help` `-h`: Show help message and exit.
