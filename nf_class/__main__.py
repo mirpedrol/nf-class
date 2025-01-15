@@ -339,20 +339,6 @@ def subworkflows(ctx, git_remote, branch, no_pull):
     default=None,
     help="Name of the modules the subworkflow should expand, separated by commas. If not provided, all available modules for the class will be expanded.",
 )
-@click.option(
-    "-p",
-    "--prefix",
-    type=str,
-    default="",
-    help="Prefix for the subworkflow name [<prefix>_classname_<suffix>].",
-)
-@click.option(
-    "-s",
-    "--suffix",
-    type=str,
-    default="",
-    help="Suffix for the subworkflow name [<prefix>_classname_<suffix>].",
-)
 def command_subworkflows_expand_class(
     ctx,
     classname,
@@ -360,8 +346,6 @@ def command_subworkflows_expand_class(
     author,
     force,
     expand_modules,
-    prefix,
-    suffix,
 ):
     """
     Create a new DSL2 subworkflow from a class.
@@ -375,8 +359,6 @@ def command_subworkflows_expand_class(
             author,
             force,
             expand_modules,
-            prefix,
-            suffix,
             ctx.obj["modules_repo_url"],
             ctx.obj["modules_repo_branch"],
         )

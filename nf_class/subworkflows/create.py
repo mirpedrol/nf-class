@@ -3,12 +3,10 @@ import re
 from pathlib import Path
 from typing import Optional
 
-import questionary
 import yaml
 
 from nf_class.components.create import ComponentCreateFromClass
 from nf_class.utils import NF_CLASS_MODULES_REMOTE
-from nf_core.utils import nfcore_question_style
 
 log = logging.getLogger(__name__)
 
@@ -23,8 +21,6 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         author (str): Author of the subworkflow.
         force (bool): Overwrite existing files.
         expand_modules (str): List of modules to expand the subworkflow with.
-        prefix (str): Prefix for the subworkflow name [<prefix>_classname_<suffix>].
-        suffix (str): Suffix for the subworkflow name [<prefix>_classname_<suffix>].
         modules_repo_url (str): URL of the modules repository.
         modules_repo_branch (str): Branch of the modules repository.
     """
@@ -36,29 +32,14 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         author: Optional[str] = None,
         force: bool = False,
         expand_modules: str = "",
-        prefix: str = "",
-        suffix: str = "",
         modules_repo_url: Optional[str] = NF_CLASS_MODULES_REMOTE,
         modules_repo_branch: Optional[str] = "main",
     ):
-        while prefix == "" and suffix == "":
-            log.info("Please provide a prefix or suffix for the subworkflow name.")
-            prefix = questionary.text(
-                "Prefix:",
-                default="",
-                style=nfcore_question_style,
-            ).unsafe_ask()
-            suffix = questionary.text(
-                "Suffix:",
-                default="",
-                style=nfcore_question_style,
-            ).unsafe_ask()
-        subworkflow_name = f"{prefix}{'_' if prefix else ''}{classname}{'_' if suffix else ''}{suffix}"
         super().__init__(
             "subworkflows",
             dir,
             classname,
-            subworkflow_name,
+            classname,
             author,
             force,
             None,
