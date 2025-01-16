@@ -94,7 +94,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         # List of component tags for nf-tests
         self.components_tags = ""
         for comp in self.components:
-            self.components_tags += f"""\ttag "{comp}"\n"""
+            self.components_tags += f"""    tag "{comp}"\n"""
 
         # Generated code for include statements
         self.include_statements = ""
@@ -113,7 +113,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 input_channels.append(f"ch_{element_keys[1]}")
             else:
                 input_channels.append(f"ch_{element_keys[0]}")
-        self.input_channels = "\n\t".join(input_channels)
+        self.input_channels = "\n    ".join(input_channels)
 
         # Yml input channels
         inputs_yml_swf: dict = {"input": []}
@@ -134,7 +134,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             out_channel_names.append(list(channel.keys())[0])
         self.output_channels = ""
         for out_channel in out_channel_names:
-            self.output_channels += f"\t{out_channel} = ch_out_{out_channel}\n"
+            self.output_channels += f"    {out_channel} = ch_out_{out_channel}\n"
 
         # Yml output channels
         outputs_yml_swf: dict = {"output": []}
@@ -152,7 +152,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         # Code for running the included module
         self.run_module = ""
         for out_channel in out_channel_names:
-            self.run_module += f"\tdef ch_out_{out_channel} = Channel.empty()\n"
+            self.run_module += f"    def ch_out_{out_channel} = Channel.empty()\n"
         first = True
         for component in self.components:
             if first:
@@ -161,12 +161,12 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             else:
                 start = "else if"
             module_name = component.replace("/", "_").upper()
-            self.run_module += f"""\t{start} ( params.{self.classname} == "{component}" ) {{\n\t\t{module_name}( {", ".join(input_channels)} )\n"""
+            self.run_module += f"""    {start} ( params.{self.classname} == "{component}" ) {{\n        {module_name}( {", ".join(input_channels)} )\n"""
             for out_channel in out_channel_names:
                 self.run_module += (
-                    f"\t\tch_out_{out_channel} = ch_out_{out_channel}.mix({module_name}.out.{out_channel})\n"
+                    f"        ch_out_{out_channel} = ch_out_{out_channel}.mix({module_name}.out.{out_channel})\n"
                 )
-            self.run_module += "\t}\n"
+            self.run_module += "    }\n"
 
         # nf-tests
         self._generate_nftest_code()
@@ -262,7 +262,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                                 composed_name = re.sub(r"_", "/", composed_name)
                                 # Add composed module to tags
                                 if composed_name not in self.components_tags:
-                                    self.components_tags += f"""\ttag "{composed_name}"\n"""
+                                    self.components_tags += f"""    tag "{composed_name}"\n"""
                             if line.strip().startswith("script"):
                                 # update path for subworkflow
                                 line_split = line.split('"')
@@ -294,4 +294,4 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                     if found_input and found_test:
                         break
             # Construct subworkflow tests
-            self.tests += f"""\ttest("run {component}") {{\n\n{setup_code}\t\twhen {{\n\t\t\tparams.{self.classname} = "{component}"\n\t\t\tworkflow {{\n{''.join(module_inputs)}\t\t\t}}\n\t\t}}\n\n{''.join(module_asserts)}\t\t}}\n\t}}\n\n"""
+            self.tests += f"""    test("run {component}") {{\n\n{setup_code}        when {{\n            params.{self.classname} = "{component}"\n            workflow {{\n{''.join(module_inputs)}            }}\n        }}\n\n{''.join(module_asserts)}        }}\n    }}\n\n"""

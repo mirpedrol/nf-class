@@ -226,7 +226,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
                     element_name = f'"{element_name}"'
                 self.outputs += f"{qualifier}({element_name}), "
                 self.output_vars.append(element_name)
-            self.outputs += f"emit: {channel_name}\n\t"
+            self.outputs += f"emit: {channel_name}\n    "
 
     def _render_template(self) -> None:
         """
