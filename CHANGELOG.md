@@ -10,4 +10,5 @@
 - Modify `expand-class` command to avoid conditional includes [#8](https://github.com/mirpedrol/nf-class/pull/8)
 - Don't allow expanding a subworkflow in a pipelines repo & pin nf-core version [#10](https://github.com/mirpedrol/nf-class/pull/10)
 - Remove `prefix` and `suffix` options from `expand-class` command [#11](https://github.com/mirpedrol/nf-class/pull/11)
-- Add the clas sname to the meta.yml of modules [#12](https://github.com/mirpedrol/nf-class/pull/12)
+- Add the class sname to the `meta.yml` of modules [#12](https://github.com/mirpedrol/nf-class/pull/12)
+- Fix component name for subworkflows when class name was not provided [#13](https://github.com/mirpedrol/nf-class/pull/13)

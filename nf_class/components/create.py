@@ -156,6 +156,9 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
             ).unsafe_ask()
         if self.classname and self.classname not in available_classes:
             raise UserWarning(f"Class '{self.classname}' not found.")
+        # Update subworkflow name based on classname
+        if self.component_type == "subworkflows":
+            self.component = self.classname
 
     def _get_available_classes(self, checkout=True, commit=None) -> list:
         """
