@@ -156,6 +156,9 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
             ).unsafe_ask()
         if self.classname and self.classname not in available_classes:
             raise UserWarning(f"Class '{self.classname}' not found.")
+        # Update subworkflow name based on classname
+        if self.component_type == "subworkflows":
+            self.component = self.classname
 
     def _get_available_classes(self, checkout=True, commit=None) -> list:
         """
@@ -223,7 +226,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
                     element_name = f'"{element_name}"'
                 self.outputs += f"{qualifier}({element_name}), "
                 self.output_vars.append(element_name)
-            self.outputs += f"emit: {channel_name}\n\t"
+            self.outputs += f"emit: {channel_name}\n    "
 
     def _render_template(self) -> None:
         """

@@ -2,15 +2,15 @@
 name: "{{ component_name_underscore }}"
 description: {{ description }}
 keywords:
-  {{ keywords }}
+    {{ keywords }}
 components:
-  {{ components }}
+    {{ components }}
 
 {{ inputs_yml_swf }}
 
 {{ outputs_yml_swf }}
 
 authors:
-  - "{{ author }}"
+    - "{{ author }}"
 maintainers:
-  - "{{ author }}"
+    - "{{ author }}"

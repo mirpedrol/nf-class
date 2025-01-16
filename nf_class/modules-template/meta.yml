@@ -2,23 +2,23 @@
 name: "{{ component_name_underscore }}"
 description: {{ description }}
 keywords:
-  {{ keywords }}
+    {{ keywords }}
 class: "{{ classname }}"
 tools:
-  - "{{ component }}":
-      description: "{{ tool_description }}"
-      homepage: "{{ tool_doc_url }}"
-      documentation: "{{ tool_doc_url }}"
-      tool_dev_url: "{{ tool_dev_url }}"
-      doi: ""
-      licence: {{ tool_licence }}
-      identifier: {{ tool_identifier }}
+    - "{{ component }}":
+        description: "{{ tool_description }}"
+        homepage: "{{ tool_doc_url }}"
+        documentation: "{{ tool_doc_url }}"
+        tool_dev_url: "{{ tool_dev_url }}"
+        doi: ""
+        licence: {{ tool_licence }}
+        identifier: {{ tool_identifier }}
 
 {{ inputs_yml_str }}
 
 {{ outputs_yml_str }}
 
 authors:
-  - "{{ author }}"
+    - "{{ author }}"
 maintainers:
-  - "{{ author }}"
+    - "{{ author }}"
