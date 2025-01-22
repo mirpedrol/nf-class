@@ -299,6 +299,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                         # Inputs for the module
                         line = next(lines)
                         while re.sub(r"\s", "", line) != "}":
+                            if line.strip() == "]":
+                                line = f"""                        , '{component.replace("/", "_")}'\n                    ]\n"""
                             module_inputs.append(line)
                             line = next(lines)
                         found_input = True
@@ -316,4 +318,4 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                     if found_input and found_test:
                         break
             # Construct subworkflow tests
-            self.tests += f"""    test("run {component}") {{\n\n{setup_code}        when {{\n            params.{self.classname} = "{component}"\n            workflow {{\n{''.join(module_inputs)}            }}\n        }}\n\n{''.join(module_asserts)}        }}\n    }}\n\n"""
+            self.tests += f"""    test("run {component}") {{\n\n{setup_code}        when {{\n            workflow {{\n{''.join(module_inputs)}            }}\n        }}\n\n{''.join(module_asserts)}        }}\n    }}\n\n"""
