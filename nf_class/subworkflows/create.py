@@ -89,19 +89,19 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
 
     def _get_info_for_expanding(self) -> None:
         """Get the information needed to expand the subworkflow with modules from a class."""
-        # List of components included in the subworkflow
+        ### List of components included in the subworkflow ###
         self.components: list[str] = [str(component) for component in self.components]
-        # List of component tags for nf-tests
+        ### List of component tags for nf-tests ###
         self.components_tags = ""
         for comp in self.components:
             self.components_tags += f"""    tag "{comp}"\n"""
 
-        # Generated code for include statements
+        ### Generated code for include statements ###
         self.include_statements = ""
         for component in self.components:
             self.include_statements += f"""include {{ {component.replace("/", "_").upper()} }} from '../../../modules/{self.org}/{component}/main'\n"""
 
-        # Naming input channels
+        ### Naming input channels ###
         input_channels = []
         all_channels_elements = []
         for channel in self.inputs_yml:
@@ -115,7 +115,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 input_channels.append(f"ch_{element_keys[0]}")
         self.input_channels = "\n    ".join(input_channels)
 
-        # Yml input channels
+        ### Yml input channels ###
         inputs_yml_swf: dict = {"input": []}
         for i, channel in enumerate(self.inputs_yml):
             inputs_yml_swf["input"].append(
@@ -128,7 +128,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             )
         self.inputs_yml_swf: str = yaml.dump(inputs_yml_swf)
 
-        # Generate code for output channels
+        ### Generate code for output channels ###
         out_channel_names = []
         for channel in self.outputs_yml:
             out_channel_names.append(list(channel.keys())[0])
@@ -136,7 +136,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         for out_channel in out_channel_names:
             self.output_channels += f"    {out_channel} = ch_out_{out_channel}\n"
 
-        # Yml output channels
+        ### Yml output channels ###
         outputs_yml_swf: dict = {"output": []}
         for i, channel in enumerate(self.outputs_yml):
             outputs_yml_swf["output"].append(
@@ -149,26 +149,39 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             )
         self.outputs_yml_swf: str = yaml.dump(outputs_yml_swf)
 
-        # Code for running the included module
+        ### Code for running the included module ###
         self.run_module = ""
+        # Declare output channels
         for out_channel in out_channel_names:
             self.run_module += f"    def ch_out_{out_channel} = Channel.empty()\n"
-        first = True
+        self.run_module += "\n"
+        # Branch input channels
+        branch_channel_names = []
+        for i_channel in input_channels:
+            channel_elements = i_channel.split("_")[1:]
+            self.run_module += f"    {i_channel}\n"
+            self.run_module += "        .branch {\n"
+            self.run_module += f"            meta, {', '.join(channel_elements)}, tool ->\n"
+            for component in self.components:
+                module_name = component.replace("/", "_").lower()
+                self.run_module += f"""                {module_name}: tool == "{module_name}"\n"""
+                self.run_module += f"                    return [ meta, {', '.join(channel_elements)} ]\n"
+            self.run_module += "        }\n"
+            self.run_module += f"        .set {{ {i_channel + '_branch'} }}\n"
+            branch_channel_names.append(i_channel + "_branch")
+        self.run_module += "\n"
+        # Run the included modules
         for component in self.components:
-            if first:
-                start = "if"
-                first = False
-            else:
-                start = "else if"
             module_name = component.replace("/", "_").upper()
-            self.run_module += f"""    {start} ( params.{self.classname} == "{component}" ) {{\n        {module_name}( {", ".join(input_channels)} )\n"""
+            access_outputs = [name + f".{module_name.lower()}" for name in branch_channel_names]
+            self.run_module += f"""    {module_name}( {", ".join(access_outputs)} )\n"""
             for out_channel in out_channel_names:
                 self.run_module += (
-                    f"        ch_out_{out_channel} = ch_out_{out_channel}.mix({module_name}.out.{out_channel})\n"
+                    f"    ch_out_{out_channel} = ch_out_{out_channel}.mix({module_name}.out.{out_channel})\n"
                 )
-            self.run_module += "    }\n"
+            self.run_module += "\n"
 
-        # nf-tests
+        ### nf-tests ###
         self._generate_nftest_code()
 
     def _get_modules_from_class(self) -> None:
