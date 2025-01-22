@@ -118,6 +118,15 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         ### Yml input channels ###
         inputs_yml_swf: dict = {"input": []}
         for i, channel in enumerate(self.inputs_yml):
+            # Add 'tool' to the channel elements, defines which tool to run
+            channel.append(
+                {
+                    "tool": {
+                        "type": "string",
+                        "description": "The name of the tool to run",
+                    }
+                }
+            )
             inputs_yml_swf["input"].append(
                 {
                     input_channels[i]: {
