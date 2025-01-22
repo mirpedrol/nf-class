@@ -299,8 +299,11 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                         # Inputs for the module
                         line = next(lines)
                         while re.sub(r"\s", "", line) != "}":
+                            if line.strip().startswith("input") and "Channel.of" not in line:
+                                line_tmp = line.split("=")
+                                line = line_tmp[0] + " = Channel.of(" + line_tmp[1]
                             if line.strip() == "]":
-                                line = f"""                        , '{component.replace("/", "_")}'\n                    ]\n"""
+                                line = f"""                        , '{component.replace("/", "_")}'\n                    ])\n"""
                             module_inputs.append(line)
                             line = next(lines)
                         found_input = True
