@@ -278,7 +278,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 for line in lines:
                     if re.sub(r"\s", "", line).startswith("setup") and "{" in line:
                         # This is a composed module
-                        while "when {" not in line:
+                        while "when {" not in line and not line.strip().startswith("test"):
                             if line.strip().startswith("run("):
                                 composed_name = line.split('"')[1].lower()
                                 composed_name = re.sub(r"_", "/", composed_name)
@@ -299,22 +299,30 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                         # Inputs for the module
                         line = next(lines)
                         while re.sub(r"\s", "", line) != "}":
-                            if line.strip().startswith("input") and "Channel.of" not in line:
+                            match = re.search(r"=\s*[A-Z][^=]*\.out[^=]*$", line)
+                            if line.strip().startswith("input") and "Channel.of" not in line and not match:
                                 line_tmp = line.split("=")
                                 line = line_tmp[0] + " = Channel.of(" + line_tmp[1]
                             if line.strip() == "]":
                                 line = f"""                        , '{component.replace("/", "_")}'\n                    ])\n"""
+                            elif match and line.strip().endswith("]}"):
+                                line = f"""{line.split("]}")[0]}, '{component.replace("/", "_")}']}}\n"""
                             module_inputs.append(line)
                             line = next(lines)
                         found_input = True
                     if "then" in line:
                         while re.sub(r"\s", "", line) != "}":
                             line = re.sub(r"process.", "workflow.", line)
-                            if "match(" in line:
+                            groups = re.search(r"workflow\.out\.?(.*)\)\.match\((\".*\")*\)", line)
+                            if groups:
                                 # give a new name to snapshot to avoid duplications
-                                line_split = line.split('"')
-                                channel_name = line.split("workflow.out.")[1].split(")")[0]
-                                line = line_split[0] + f'"{component.replace("/", "_")}_{channel_name}"' + line_split[2]
+                                channel_name = groups.group(1)
+                                snapshot_name = f"\"{component.replace('/', '_')}_{channel_name}\""
+                                line = re.sub(
+                                    r"match\((\".*\")*\)",
+                                    rf"match({snapshot_name if len(channel_name) > 0 else ''})",
+                                    line,
+                                )
                             module_asserts.append(line)
                             line = next(lines)
                         found_test = True
