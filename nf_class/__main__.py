@@ -364,8 +364,10 @@ def command_subworkflows_expand_class(
         )
         create_obj.expand_class()
     except UserWarning as e:
+        raise
         log.error(e)
         sys.exit(1)
     except LookupError as e:
+        raise
         log.error(e)
         sys.exit(1)

@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
+import requests
 import yaml
 
 from nf_class.components.create import ComponentCreateFromClass
@@ -49,6 +50,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         )
         self.classname = classname
         self.expand_modules = expand_modules or ""
+        self.nfcore_org = "nf-core"
 
     def expand_class(self):
         """Expand the subworkflow with modules from a class."""
@@ -99,7 +101,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         ### Generated code for include statements ###
         self.include_statements = ""
         for component in self.components:
-            self.include_statements += f"""include {{ {component.replace("/", "_").upper()} }} from '../../../modules/{self.org}/{component}/main'\n"""
+            self.include_statements += f"""include {{ {component.replace("/", "_").upper()} }} from '../../../modules/{self.nfcore_org}/{component}/main'\n"""
 
         ### Naming input channels ###
         input_channels = []
@@ -165,7 +167,6 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             self.run_module += f"    def ch_out_{out_channel} = Channel.empty()\n"
         self.run_module += "\n"
         # Branch input channels
-        branch_channel_names = []
         for i_channel in input_channels:
             channel_elements = i_channel.split("_")[1:]
             self.run_module += f"    {i_channel}\n"
@@ -177,71 +178,104 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 self.run_module += f"                    return [ meta, {', '.join(channel_elements)} ]\n"
             self.run_module += "        }\n"
             self.run_module += f"        .set {{ {i_channel + '_branch'} }}\n"
-            branch_channel_names.append(i_channel + "_branch")
         self.run_module += "\n"
         # Run the included modules
         for component in self.components:
+            # Read component meta.yml file
+            base_url = f"https://raw.githubusercontent.com/{self.nfcore_org}/modules/refs/heads/master/modules/{self.nfcore_org}/{component}/meta.yml"
+            response = requests.get(base_url)
+            response.raise_for_status()
+            component_meta = yaml.safe_load(response.content)
             module_name = component.replace("/", "_").upper()
-            access_outputs = [name + f".{module_name.lower()}" for name in branch_channel_names]
-            self.run_module += f"""    {module_name}( {", ".join(access_outputs)} )\n"""
+            access_inputs = [f"{i_channel}_branch.{module_name.lower()}" for i_channel in input_channels]
+            component_args = self._compare_inputs(component_meta["input"], access_inputs)
+            if component_args:
+                self.run_module += f"""    {module_name}( {", ".join(component_args)} )\n"""
             for out_channel in out_channel_names:
+                # TODO: not use the outpu channels from the subworkflow, but check the actual name from the module
                 self.run_module += (
                     f"    ch_out_{out_channel} = ch_out_{out_channel}.mix({module_name}.out.{out_channel})\n"
                 )
             self.run_module += "\n"
 
         ### nf-tests ###
-        self._generate_nftest_code()
+        # self._generate_nftest_code() # TODO: fix and uncomment
 
     def _get_modules_from_class(self) -> None:
         """Get the modules belonging to the class."""
         if self.expand_modules != "":
             self.components = self.expand_modules.split(",")
             for module in self.components:
-                module_dir = Path(self.directory, "modules", self.org, module)
-                if not module_dir.exists():
+                if module not in self.class_modules:
                     log.info(f"Module '{module}' not found. Skipping.")
                     self.components.remove(module)
         else:
-            modules_dir = Path(self.directory, "modules", self.org)
             self.components = []
-            for root, dirs, files in modules_dir.walk():
-                for module in dirs:
-                    if (root / module / "meta.yml").exists():
-                        module_name = (root / module).relative_to(modules_dir)
-                        with open(root / module / "meta.yml") as fh:
-                            meta = yaml.safe_load(fh)
-                            if (
-                                self._compare_component_class_inputs(meta["input"], self.inputs_yml)
-                                and self._compare_component_class_outputs(meta["output"], self.outputs_yml)
-                                and set(self.keywords).issubset(meta["keywords"])
-                            ):
-                                self.components.append(str(module_name))
+            for module in self.class_modules:
+                self.components.append(module)
 
-    def _compare_component_class_inputs(self, component_info: list[list[dict]], class_info: list[list[dict]]) -> bool:
+    def _compare_inputs(self, component_info: list[list[dict]], input_channel_names: list[str]) -> Optional[list[str]]:
         """Compare the inputs of the class with the component."""
-        equal_info = True
-        for component_channel, class_channel in zip(component_info, class_info):
-            if len(component_channel) == len(class_channel):
-                for component_element, class_element in zip(component_channel, class_channel):
-                    component_key = list(component_element.keys())[0]
-                    class_key = list(class_element.keys())[0]
-                    if (
-                        component_key != class_key
-                        or component_element[component_key]["type"] != class_element[class_key]["type"]
-                    ):
-                        equal_info = False
-                    if "pattern" in component_element[component_key] and "pattern" in class_element[class_key]:
-                        if component_element[component_key]["pattern"] != class_element[class_key]["pattern"]:
+        component_run_args = []
+        for component_channel in component_info:
+            found_channel = False
+            for class_channel, ch_name in zip(self.inputs_yml, input_channel_names):
+                print(component_channel, class_channel)
+                if type(component_channel) is type(class_channel):
+                    print(f"equal type: {type(component_channel)}")
+                    if isinstance(component_channel, list):
+                        print("list")
+                        equal_info = True
+                        if len(component_channel) == len(class_channel) - 1:  # minus the tool
+                            print(f"equal length {len(component_channel)}")
+                            for component_element, class_element in zip(component_channel, class_channel):
+                                component_key = list(component_element.keys())[0]
+                                class_key = list(class_element.keys())[0]
+                                if component_element[component_key]["type"] != class_element[class_key]["type"]:
+                                    print("channel element of different type")
+                                    equal_info = False
+                                    break
+                                elif component_element[component_key]["type"] == "file":
+                                    if not all(
+                                        term in component_element[component_key]["ontologies"]
+                                        for term in class_element[class_key]["ontologies"]
+                                    ):
+                                        print("files different ontologies")
+                                        equal_info = False
+                                        break
+                        else:
                             equal_info = False
-            else:
-                equal_info = False
-        return equal_info
+                        if equal_info:
+                            found_channel = True
+                            component_run_args.append(ch_name)
+                            break
+                    elif isinstance(component_channel, dict):
+                        equal_info = True
+                        class_key = list(class_channel.keys())[0]
+                        if component_channel[class_key]["type"] != class_channel[class_key]["type"]:
+                            equal_info = False
+                        elif (
+                            component_channel[class_key]["type"] == "file"
+                            and component_channel[class_key]["ontologies"] != class_channel[class_key]["ontologies"]
+                        ):
+                            equal_info = False
+                        if equal_info:
+                            found_channel = True
+                            component_run_args.append(ch_name)
+                            break
+            if not found_channel:
+                component_run_args.append("[]")
 
-    def _compare_component_class_outputs(self, component_info: list[dict], class_info: list[dict]) -> bool:
+        if all(name in component_run_args for name in input_channel_names):
+            return component_run_args
+        else:
+            return None
+
+    def _compare_outputs(self, component_info: list[dict]) -> list | bool:
         """Compare the outputs of the class with the component."""
-        equal_info = True
-        for component_channel, class_channel in zip(component_info, class_info):
+        # TODO: modify like we did with compare inputs
+        component_out_channels = []
+        for component_channel, class_channel in zip(component_info, self.outputs_yml):
             component_channel_name = list(component_channel.keys())[0]
             class_channel_name = list(class_channel.keys())[0]
             if component_channel_name == class_channel_name:

@@ -227,6 +227,10 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
                 self.outputs += f"{qualifier}({element_name}), "
                 self.output_vars.append(element_name)
             self.outputs += f"emit: {channel_name}\n    "
+        if "components" in content and "modules" in content["components"]:
+            self.class_modules = content["components"]["modules"]
+        else:
+            self.class_modules = []
 
     def _render_template(self) -> None:
         """
