@@ -132,7 +132,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             inputs_yml_swf["input"].append(
                 {
                     input_channels[i]: {
-                        "description": f"Channel containing: {", ".join(all_channels_elements[i])}",
+                        "description": f"Channel containing: {', '.join(all_channels_elements[i])}",
                         "structure": channel,
                     }
                 }
@@ -141,8 +141,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
 
         ### Generate code for output channels ###
         out_channel_names = []
-        for channel in self.outputs_yml:
-            out_channel_names.append(list(channel.keys())[0])
+        for channel_name in self.outputs_yml:
+            out_channel_names.append(channel_name)
         self.output_channels = ""
         for out_channel in out_channel_names:
             self.output_channels += f"    {out_channel} = ch_out_{out_channel}\n"
@@ -154,7 +154,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 {
                     out_channel_names[i]: {
                         "description": f"Output channel {out_channel_names[i]}",
-                        "structure": channel[out_channel_names[i]],
+                        "structure": self.outputs_yml[out_channel_names[i]],
                     }
                 }
             )
@@ -189,13 +189,14 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             module_name = component.replace("/", "_").upper()
             access_inputs = [f"{i_channel}_branch.{module_name.lower()}" for i_channel in input_channels]
             component_args = self._compare_inputs(component_meta["input"], access_inputs)
+            component_outs = self._compare_outputs(component_meta["output"], out_channel_names)
             if component_args:
                 self.run_module += f"""    {module_name}( {", ".join(component_args)} )\n"""
-            for out_channel in out_channel_names:
-                # TODO: not use the outpu channels from the subworkflow, but check the actual name from the module
-                self.run_module += (
-                    f"    ch_out_{out_channel} = ch_out_{out_channel}.mix({module_name}.out.{out_channel})\n"
-                )
+            if component_outs:
+                for out_channel, comp_out in component_outs.items():
+                    self.run_module += (
+                        f"    ch_out_{out_channel} = ch_out_{out_channel}.mix({module_name}.out.{comp_out})\n"
+                    )
             self.run_module += "\n"
 
         ### nf-tests ###
@@ -220,29 +221,22 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         for component_channel in component_info:
             found_channel = False
             for class_channel, ch_name in zip(self.inputs_yml, input_channel_names):
-                print(component_channel, class_channel)
                 if type(component_channel) is type(class_channel):
-                    print(f"equal type: {type(component_channel)}")
                     if isinstance(component_channel, list):
-                        print("list")
                         equal_info = True
                         if len(component_channel) == len(class_channel) - 1:  # minus the tool
-                            print(f"equal length {len(component_channel)}")
                             for component_element, class_element in zip(component_channel, class_channel):
                                 component_key = list(component_element.keys())[0]
                                 class_key = list(class_element.keys())[0]
                                 if component_element[component_key]["type"] != class_element[class_key]["type"]:
-                                    print("channel element of different type")
                                     equal_info = False
                                     break
-                                elif component_element[component_key]["type"] == "file":
-                                    if not all(
-                                        term in component_element[component_key]["ontologies"]
-                                        for term in class_element[class_key]["ontologies"]
-                                    ):
-                                        print("files different ontologies")
-                                        equal_info = False
-                                        break
+                                elif component_element[component_key]["type"] == "file" and not all(
+                                    term in component_element[component_key]["ontologies"]
+                                    for term in class_element[class_key]["ontologies"]
+                                ):
+                                    equal_info = False
+                                    break
                         else:
                             equal_info = False
                         if equal_info:
@@ -251,12 +245,13 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                             break
                     elif isinstance(component_channel, dict):
                         equal_info = True
+                        component_key = list(component_element.keys())[0]
                         class_key = list(class_channel.keys())[0]
-                        if component_channel[class_key]["type"] != class_channel[class_key]["type"]:
+                        if component_channel[component_key]["type"] != class_channel[class_key]["type"]:
                             equal_info = False
                         elif (
-                            component_channel[class_key]["type"] == "file"
-                            and component_channel[class_key]["ontologies"] != class_channel[class_key]["ontologies"]
+                            component_channel[component_key]["type"] == "file"
+                            and component_channel[component_key]["ontologies"] != class_channel[class_key]["ontologies"]
                         ):
                             equal_info = False
                         if equal_info:
@@ -271,30 +266,56 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         else:
             return None
 
-    def _compare_outputs(self, component_info: list[dict]) -> list | bool:
+    def _compare_outputs(self, component_info: dict, output_channel_names: list[str]) -> Optional[dict]:
         """Compare the outputs of the class with the component."""
-        # TODO: modify like we did with compare inputs
-        component_out_channels = []
-        for component_channel, class_channel in zip(component_info, self.outputs_yml):
-            component_channel_name = list(component_channel.keys())[0]
-            class_channel_name = list(class_channel.keys())[0]
-            if component_channel_name == class_channel_name:
-                for component_element, class_element in zip(
-                    component_channel[component_channel_name], class_channel[class_channel_name]
-                ):
-                    component_key = list(component_element.keys())[0]
-                    class_key = list(class_element.keys())[0]
-                    if (
-                        component_key != class_key
-                        or component_element[component_key]["type"] != class_element[class_key]["type"]
-                    ):
-                        equal_info = False
-                    if "pattern" in component_element[component_key] and "pattern" in class_element[class_key]:
-                        if component_element[component_key]["pattern"] != class_element[class_key]["pattern"]:
+        component_out_channels = {}
+        for component_ch_name, component_channel in component_info.items():
+            for ch_name, class_channel in self.outputs_yml.items():
+                if type(component_channel[0]) is type(class_channel[0]):
+                    if isinstance(component_channel[0], list):
+                        equal_info = True
+                        if len(component_channel[0]) == len(class_channel[0]):
+                            for component_element, class_element in zip(component_channel[0], class_channel[0]):
+                                component_key = list(component_element.keys())[0]
+                                class_key = list(class_element.keys())[0]
+                                if component_element[component_key]["type"] != class_element[class_key]["type"]:
+                                    equal_info = False
+                                    break
+                                elif component_element[component_key]["type"] == "file":
+                                    if not all(
+                                        term in component_element[component_key]["ontologies"]
+                                        for term in class_element[class_key]["ontologies"]
+                                    ):
+                                        equal_info = False
+                                        break
+                        else:
                             equal_info = False
-            else:
-                equal_info = False
-        return equal_info
+                        if equal_info:
+                            component_out_channels[ch_name] = component_ch_name
+                            break
+                    elif isinstance(component_channel[0], dict):
+                        equal_info = True
+                        component_key = list(component_channel[0].keys())[0]
+                        class_key = list(class_channel[0].keys())[0]
+                        if component_channel[0][component_key]["type"] != class_channel[0][class_key]["type"]:
+                            equal_info = False
+                        elif (
+                            component_channel[0][component_key]["type"] == "file"
+                            and "ontologies" in component_channel[0][component_key]
+                            and "ontologies" in class_channel[0][class_key]
+                            and not all(
+                                term in component_channel[0][component_key]["ontologies"]
+                                for term in class_channel[0][class_key]["ontologies"]
+                            )
+                        ):
+                            equal_info = False
+                        if equal_info:
+                            component_out_channels[ch_name] = component_ch_name
+                            break
+        if all(name in component_out_channels.keys() for name in output_channel_names):
+            return component_out_channels
+        else:
+            return None
 
     def _generate_nftest_code(self) -> None:
         """Generate the code for nf-tests."""

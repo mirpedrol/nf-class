@@ -211,16 +211,24 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
                 self.inputs += f"{qualifier}({element_name})"
                 self.input_vars.append(element_name)
             self.inputs += "\n"
-        # Obtain input channels
+        # Obtain output channels
         self.outputs = ""
         self.output_vars = []
-        for channel in content["output"]:
-            channel_name = list(channel.keys())[0]
-            if len(channel[channel_name]) > 1:
+        for channel_name in content["output"].keys():
+            channel = content["output"][channel_name][0]
+            if isinstance(channel, list):
                 self.outputs += "tuple "
-            for element in channel[channel_name]:
-                element_name = list(element.keys())[0]
-                element_type = element[element_name]["type"]
+                for element in channel:
+                    element_name = list(element.keys())[0]
+                    element_type = element[element_name]["type"]
+                    qualifier = self._get_qualifier(element_type)
+                    if any(not c.isalnum() for c in element_name):
+                        element_name = f'"{element_name}"'
+                    self.outputs += f"{qualifier}({element_name}), "
+                    self.output_vars.append(element_name)
+            elif isinstance(channel, dict):
+                element_name = list(channel.keys())[0]
+                element_type = channel[element_name]["type"]
                 qualifier = self._get_qualifier(element_type)
                 if any(not c.isalnum() for c in element_name):
                     element_name = f'"{element_name}"'
