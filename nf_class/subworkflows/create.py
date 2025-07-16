@@ -8,6 +8,7 @@ import yaml
 
 from nf_class.components.create import ComponentCreateFromClass
 from nf_class.utils import NF_CLASS_MODULES_REMOTE
+from nf_core.pipelines.lint_utils import run_prettier_on_file
 
 log = logging.getLogger(__name__)
 
@@ -87,6 +88,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         log.info(f"Created component template: '{self.component}'")
 
         new_files = [str(path) for path in self.file_paths.values()]
+        run_prettier_on_file(new_files)
         log.info("Created following files:\n  " + "\n  ".join(new_files))
 
     def _get_info_for_expanding(self) -> None:
@@ -219,8 +221,11 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         """Compare two channel elements by checking they have teh same type and all the class ontologies are present"""
         if component_element["type"] != class_element["type"]:
             return False
-        elif component_element["type"] == "file" and not all(
-            term in component_element["ontologies"] for term in class_element["ontologies"]
+        elif (
+            component_element["type"] == "file"
+            and "ontologies" in component_element
+            and "ontologies" in class_element
+            and not all(term in component_element["ontologies"] for term in class_element["ontologies"])
         ):
             return False
         return True
@@ -348,6 +353,10 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                             line = f"""                        , '{component.replace("/", "_")}'\n                    ])\n"""
                         elif match and line.strip().endswith("]}"):
                             line = f"""{line.split("]}")[0]}, '{component.replace("/", "_")}']}}\n"""
+                        # check left-padding
+                        extra_spaces = (len(line) - len(line.lstrip())) % 4
+                        if extra_spaces != 0:
+                            line = " " * (4 - extra_spaces) + line
                         module_inputs.append(line)
                         line = next(lines).decode("utf-8")
                         # close previous Channel.of if needed
@@ -363,7 +372,11 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 if "then" in line:
                     while re.sub(r"\s", "", line) != "}":
                         line = re.sub(r"process.", "workflow.", line)
-                        groups = re.search(r"workflow\.out\.?(.*)\)\.match\((\".*\")*\)", line)
+                        groups = re.search(r"workflow\.out\.?\s*([^\s)]*)\)\.match\((\".*\")*\)", line)
+                        # workflow.out.FOO).match("bar")
+                        # workflow.out).match()
+                        # workflow.out).match("baz")
+                        # workflow.out.FOO_BAR).match("snap1", "snap2")
                         if groups:
                             # give a new name to snapshot to avoid duplications
                             channel_name = groups.group(1)
