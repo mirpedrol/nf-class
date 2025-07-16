@@ -189,7 +189,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             module_name = component.replace("/", "_").upper()
             access_inputs = [f"{i_channel}_branch.{module_name.lower()}" for i_channel in input_channels]
             component_args = self._compare_inputs(component_meta["input"], access_inputs)
-            component_outs = self._compare_outputs(component_meta["output"], out_channel_names)
+            component_outs = self._compare_outputs(component_meta["output"])
             if component_args:
                 self.run_module += f"""    {module_name}( {", ".join(component_args)} )\n"""
             if component_outs:
@@ -215,6 +215,16 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             for module in self.class_modules:
                 self.components.append(module)
 
+    def _compare_channels(self, component_element, class_element):
+        """Compare two channel elements by checking they have teh same type and all the class ontologies are present"""
+        if component_element["type"] != class_element["type"]:
+            return False
+        elif component_element["type"] == "file" and not all(
+            term in component_element["ontologies"] for term in class_element["ontologies"]
+        ):
+            return False
+        return True
+
     def _compare_inputs(self, component_info: list[list[dict]], input_channel_names: list[str]) -> Optional[list[str]]:
         """Compare the inputs of the class with the component."""
         component_run_args = []
@@ -228,12 +238,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                             for component_element, class_element in zip(component_channel, class_channel):
                                 component_key = list(component_element.keys())[0]
                                 class_key = list(class_element.keys())[0]
-                                if component_element[component_key]["type"] != class_element[class_key]["type"]:
-                                    equal_info = False
-                                    break
-                                elif component_element[component_key]["type"] == "file" and not all(
-                                    term in component_element[component_key]["ontologies"]
-                                    for term in class_element[class_key]["ontologies"]
+                                if not self._compare_channels(
+                                    component_element[component_key], class_element[class_key]
                                 ):
                                     equal_info = False
                                     break
@@ -244,16 +250,9 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                             component_run_args.append(ch_name)
                             break
                     elif isinstance(component_channel, dict):
-                        equal_info = True
-                        component_key = list(component_element.keys())[0]
+                        component_key = list(component_channel.keys())[0]
                         class_key = list(class_channel.keys())[0]
-                        if component_channel[component_key]["type"] != class_channel[class_key]["type"]:
-                            equal_info = False
-                        elif (
-                            component_channel[component_key]["type"] == "file"
-                            and component_channel[component_key]["ontologies"] != class_channel[class_key]["ontologies"]
-                        ):
-                            equal_info = False
+                        equal_info = self._compare_channels(component_channel[component_key], class_channel[class_key])
                         if equal_info:
                             found_channel = True
                             component_run_args.append(ch_name)
@@ -266,7 +265,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         else:
             return None
 
-    def _compare_outputs(self, component_info: dict, output_channel_names: list[str]) -> Optional[dict]:
+    def _compare_outputs(self, component_info: dict) -> Optional[dict]:
         """Compare the outputs of the class with the component."""
         component_out_channels = {}
         for component_ch_name, component_channel in component_info.items():
@@ -278,41 +277,26 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                             for component_element, class_element in zip(component_channel[0], class_channel[0]):
                                 component_key = list(component_element.keys())[0]
                                 class_key = list(class_element.keys())[0]
-                                if component_element[component_key]["type"] != class_element[class_key]["type"]:
+                                if not self._compare_channels(
+                                    component_element[component_key], class_element[class_key]
+                                ):
                                     equal_info = False
                                     break
-                                elif component_element[component_key]["type"] == "file":
-                                    if not all(
-                                        term in component_element[component_key]["ontologies"]
-                                        for term in class_element[class_key]["ontologies"]
-                                    ):
-                                        equal_info = False
-                                        break
                         else:
                             equal_info = False
                         if equal_info:
                             component_out_channels[ch_name] = component_ch_name
                             break
                     elif isinstance(component_channel[0], dict):
-                        equal_info = True
                         component_key = list(component_channel[0].keys())[0]
                         class_key = list(class_channel[0].keys())[0]
-                        if component_channel[0][component_key]["type"] != class_channel[0][class_key]["type"]:
-                            equal_info = False
-                        elif (
-                            component_channel[0][component_key]["type"] == "file"
-                            and "ontologies" in component_channel[0][component_key]
-                            and "ontologies" in class_channel[0][class_key]
-                            and not all(
-                                term in component_channel[0][component_key]["ontologies"]
-                                for term in class_channel[0][class_key]["ontologies"]
-                            )
-                        ):
-                            equal_info = False
+                        equal_info = self._compare_channels(
+                            component_channel[0][component_key], class_channel[0][class_key]
+                        )
                         if equal_info:
                             component_out_channels[ch_name] = component_ch_name
                             break
-        if all(name in component_out_channels.keys() for name in output_channel_names):
+        if all(name in component_out_channels.keys() for name in self.outputs_yml.keys()):
             return component_out_channels
         else:
             return None
