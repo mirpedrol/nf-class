@@ -200,7 +200,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             self.run_module += "\n"
 
         ### nf-tests ###
-        # self._generate_nftest_code() # TODO: fix and uncomment
+        self._generate_nftest_code()
 
     def _get_modules_from_class(self) -> None:
         """Get the modules belonging to the class."""
@@ -304,68 +304,79 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
     def _generate_nftest_code(self) -> None:
         """Generate the code for nf-tests."""
         self.tests = ""
-        modules_dir = Path(self.directory, "modules", self.org)
         for component in self.components:
             module_inputs = []
             module_asserts = []
             # Parse module test
-            with open(modules_dir / component / "tests" / "main.nf.test") as fh:
-                lines = iter(fh.readlines())
-                found_input = False
-                found_test = False
-                setup_code = ""
-                for line in lines:
-                    if re.sub(r"\s", "", line).startswith("setup") and "{" in line:
-                        # This is a composed module
-                        while "when {" not in line and not line.strip().startswith("test"):
-                            if line.strip().startswith("run("):
-                                composed_name = line.split('"')[1].lower()
-                                composed_name = re.sub(r"_", "/", composed_name)
-                                # Add composed module to tags
-                                if composed_name not in self.components_tags:
-                                    self.components_tags += f"""    tag "{composed_name}"\n"""
-                            if line.strip().startswith("script"):
-                                # update path for subworkflow
-                                line_split = line.split('"')
-                                line = (
-                                    line_split[0]
-                                    + f'"../../../../modules/{self.org}/{composed_name}/main.nf"'
-                                    + line_split[2]
-                                )
-                            setup_code += line
-                            line = next(lines)
-                    elif re.sub(r"\s", "", line).startswith("process") and "{" in line:
-                        # Inputs for the module
-                        line = next(lines)
-                        while re.sub(r"\s", "", line) != "}":
-                            match = re.search(r"=\s*[A-Z][^=]*\.out[^=]*$", line)
-                            if line.strip().startswith("input") and "Channel.of" not in line and not match:
-                                line_tmp = line.split("=")
-                                line = line_tmp[0] + " = Channel.of(" + line_tmp[1]
-                            if line.strip() == "]":
-                                line = f"""                        , '{component.replace("/", "_")}'\n                    ])\n"""
-                            elif match and line.strip().endswith("]}"):
-                                line = f"""{line.split("]}")[0]}, '{component.replace("/", "_")}']}}\n"""
-                            module_inputs.append(line)
-                            line = next(lines)
-                        found_input = True
-                    if "then" in line:
-                        while re.sub(r"\s", "", line) != "}":
-                            line = re.sub(r"process.", "workflow.", line)
-                            groups = re.search(r"workflow\.out\.?(.*)\)\.match\((\".*\")*\)", line)
-                            if groups:
-                                # give a new name to snapshot to avoid duplications
-                                channel_name = groups.group(1)
-                                snapshot_name = f"\"{component.replace('/', '_')}_{channel_name}\""
-                                line = re.sub(
-                                    r"match\((\".*\")*\)",
-                                    rf"match({snapshot_name if len(channel_name) > 0 else ''})",
-                                    line,
-                                )
-                            module_asserts.append(line)
-                            line = next(lines)
-                        found_test = True
-                    if found_input and found_test:
-                        break
+            base_url = f"https://raw.githubusercontent.com/{self.nfcore_org}/modules/refs/heads/master/modules/{self.nfcore_org}/{component}/tests/main.nf.test"
+            response = requests.get(base_url)
+            response.raise_for_status()
+            found_input = False
+            found_test = False
+            setup_code = ""
+            lines = response.iter_lines()
+            for line in lines:
+                line = line.decode("utf-8")
+                if re.sub(r"\s", "", line).startswith("setup") and "{" in line:
+                    # This is a composed module
+                    while "when {" not in line and not line.strip().startswith("test"):
+                        if line.strip().startswith("run("):
+                            composed_name = line.split('"')[1].lower()
+                            composed_name = re.sub(r"_", "/", composed_name)
+                            # Add composed module to tags
+                            if composed_name not in self.components_tags:
+                                self.components_tags += f"""    tag "{composed_name}"\n"""
+                        if line.strip().startswith("script"):
+                            # update path for subworkflow
+                            line_split = line.split('"')
+                            line = (
+                                line_split[0]
+                                + f'"../../../../modules/{self.org}/{composed_name}/main.nf"'
+                                + line_split[2]
+                            )
+                        setup_code += line + "\n"
+                        line = next(lines).decode("utf-8")
+                elif re.sub(r"\s", "", line).startswith("process") and "{" in line:
+                    # Inputs for the module
+                    line = next(lines).decode("utf-8")
+                    while re.sub(r"\s", "", line) != "}":
+                        match = re.search(r"=\s*[A-Z][^=]*\.out[^=]*$", line)  # = TOOL_SUBTOOL.out
+                        if line.strip().startswith("input") and "Channel.of" not in line and not match:
+                            line_tmp = line.split("=")
+                            line = line_tmp[0] + " = Channel.of(" + line_tmp[1]
+                        if line.strip() == "]":
+                            line = f"""                        , '{component.replace("/", "_")}'\n                    ])\n"""
+                        elif match and line.strip().endswith("]}"):
+                            line = f"""{line.split("]}")[0]}, '{component.replace("/", "_")}']}}\n"""
+                        module_inputs.append(line)
+                        line = next(lines).decode("utf-8")
+                        # close previous Channel.of if needed
+                        if (
+                            ("input" in line or '"""' in line or line.strip() == "")
+                            and "Channel.of" in module_inputs[-1]
+                            and not module_inputs[-1].endswith(")")
+                        ):
+                            module_inputs[-1] = module_inputs[-1] + " )\n"
+                        else:
+                            module_inputs[-1] = module_inputs[-1] + "\n"
+                    found_input = True
+                if "then" in line:
+                    while re.sub(r"\s", "", line) != "}":
+                        line = re.sub(r"process.", "workflow.", line)
+                        groups = re.search(r"workflow\.out\.?(.*)\)\.match\((\".*\")*\)", line)
+                        if groups:
+                            # give a new name to snapshot to avoid duplications
+                            channel_name = groups.group(1)
+                            snapshot_name = f"\"{component.replace('/', '_')}_{channel_name}\""
+                            line = re.sub(
+                                r"match\((\".*\")*\)",
+                                rf"match({snapshot_name if len(channel_name) > 0 else ''})",
+                                line,
+                            )
+                        module_asserts.append(line + "\n")
+                        line = next(lines).decode("utf-8")
+                    found_test = True
+                if found_input and found_test:
+                    break
             # Construct subworkflow tests
             self.tests += f"""    test("run {component}") {{\n\n{setup_code}        when {{\n            workflow {{\n{''.join(module_inputs)}            }}\n        }}\n\n{''.join(module_asserts)}        }}\n    }}\n\n"""
