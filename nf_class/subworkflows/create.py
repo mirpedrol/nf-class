@@ -213,9 +213,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                     log.info(f"Module '{module}' not found. Skipping.")
                     self.components.remove(module)
         else:
-            self.components = []
-            for module in self.class_modules:
-                self.components.append(module)
+            self.components = self.class_modules[:]
 
     def _compare_channels(self, component_element, class_element):
         """Compare two channel elements by checking they have teh same type and all the class ontologies are present"""
