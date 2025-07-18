@@ -182,6 +182,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             self.run_module += f"        .set {{ {i_channel + '_branch'} }}\n"
         self.run_module += "\n"
         # Run the included modules
+        self.components_args_inputs = {} # The inputs used for each component
         for component in self.components:
             # Read component meta.yml file
             base_url = f"https://raw.githubusercontent.com/{self.nfcore_org}/modules/refs/heads/master/modules/{self.nfcore_org}/{component}/meta.yml"
@@ -192,6 +193,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             access_inputs = [f"{i_channel}_branch.{module_name.lower()}" for i_channel in input_channels]
             component_args = self._compare_inputs(component_meta["input"], access_inputs)
             component_outs = self._compare_outputs(component_meta["output"])
+            self.components_args_inputs[component] = component_args
             if component_args:
                 self.run_module += f"""    {module_name}( {", ".join(component_args)} )\n"""
             if component_outs:
@@ -304,6 +306,47 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         else:
             return None
 
+    def _extract_block_with_braces(self, text: str, start_keyword: str) -> str:
+        """
+        Finds the block starting with 'start_keyword {' and returns the content until the matching closing brace.
+        """
+        start = re.search(rf'{re.escape(start_keyword)}\s*\{{', text)
+        if not start:
+            return None
+        start_idx = start.end()  # start after the first '{'
+        brace_count = 1
+        end = start_idx
+        while end < len(text):
+            if text[end] == '{':
+                brace_count += 1
+            elif text[end] == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    break
+            end += 1
+        return text[start_idx:end].strip() if brace_count == 0 else None
+
+    def _parse_nftest_file(self, file_content: str) -> dict:
+        """Parse the main.nf.test file of a module and store all tests, their input definitions, assertions, and setup blocks (if present)."""
+        # Get all test names
+        test_name_pattern = re.compile(r'test\s*\(\s*"(?P<name>[^"]+)"\s*\)\s*\{')
+        test_names = [m.group("name") for m in test_name_pattern.finditer(file_content)]
+
+        # Split content by test declaration
+        splits = test_name_pattern.split(file_content)
+        blocks = splits[1:]  # Skip code before the first test
+        blocks = [b for b in blocks if b not in test_names] # Remove test names from blocks
+
+        results = {}
+        for name, block in zip(test_names, blocks):
+            results[name] = {
+                "setup": self._extract_block_with_braces(block, "setup"),
+                "process": self._extract_block_with_braces(block, "process"),
+                "then": self._extract_block_with_braces(block, "then")
+            }
+
+        return results
+
     def _generate_nftest_code(self) -> None:
         """Generate the code for nf-tests."""
         self.tests = ""
@@ -314,31 +357,60 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             base_url = f"https://raw.githubusercontent.com/{self.nfcore_org}/modules/refs/heads/master/modules/{self.nfcore_org}/{component}/tests/main.nf.test"
             response = requests.get(base_url)
             response.raise_for_status()
-            found_input = False
-            found_test = False
-            setup_code = ""
-            lines = response.iter_lines()
+            file_content = response.content
+            file_content = file_content.decode("utf-8")
+            test_blocks = self._parse_nftest_file(file_content)
+
+            # TODO: select the correct test
+
+            # Add composed module to tag
+            if test_blocks[test]["setup"]:
+                composed_module_name_pattern = re.compile(r"run\(['\"](.*)['\"]\)")
+                composed_names = [m.group(1) for m in composed_module_name_pattern.finditer(test_blocks[test]["setup"])]
+                for composed_name in composed_names:
+                    if composed_name not in self.components_tags:
+                        self.components_tags += f"""    tag "{composed_name}"\n"""
+                # Update path to module script
+                test_blocks[test]["setup"] = re.sub(r"(script\s*['\"])(.*?)(['\"])", rf"../../../../modules/{self.nfcore_org}/{composed_name}/main.nf", test_blocks[test]["setup"])
+
+            if test_blocks[test]["process"]:
+                input_pattern = re.compile(r'(input\[([0-9]*)\]\s*=\s*|""")')
+                inputs_iter = test_name_pattern.finditer(test_blocks[test]["process"])
+                input_index = [m.group(2) for m in inputs_iter]
+                input_names = [m.group(1) for m in inputs_iter]
+
+                input_splits = input_pattern.split(test_blocks[test]["process"])
+                input_blocks = input_splits[1:] # Skip code before the first input
+                input_blocks = [b for b in input_blocks if b not in input_names] # Remove input names from blocks
+
+                input_blocks_channels = [f"Channel.of ( {i} )" for i in input_blocks if not i.strip().startswith("Channel")]
+
+
+
+
+
+
             for line in lines:
                 line = line.decode("utf-8")
                 if re.sub(r"\s", "", line).startswith("setup") and "{" in line:
                     # This is a composed module
                     while "when {" not in line and not line.strip().startswith("test"):
-                        if line.strip().startswith("run("):
-                            composed_name = line.split('"')[1].lower()
-                            composed_name = re.sub(r"_", "/", composed_name)
-                            # Add composed module to tags
-                            if composed_name not in self.components_tags:
-                                self.components_tags += f"""    tag "{composed_name}"\n"""
-                        if line.strip().startswith("script"):
-                            # update path for subworkflow
-                            line_split = line.split('"')
-                            line = (
-                                line_split[0]
-                                + f'"../../../../modules/{self.org}/{composed_name}/main.nf"'
-                                + line_split[2]
-                            )
-                        setup_code += line + "\n"
-                        line = next(lines).decode("utf-8")
+                        #if line.strip().startswith("run("):
+                        #    composed_name = line.split('"')[1].lower()
+                        #    composed_name = re.sub(r"_", "/", composed_name)
+                        #    # Add composed module to tags
+                        #    if composed_name not in self.components_tags:
+                        #        self.components_tags += f"""    tag "{composed_name}"\n"""
+                        #if line.strip().startswith("script"):
+                        #    # update path for subworkflow
+                        #    line_split = line.split('"')
+                        #    line = (
+                        #        line_split[0]
+                        #        + f'"../../../../modules/{self.org}/{composed_name}/main.nf"'
+                        #        + line_split[2]
+                        #    )
+                        #setup_code += line + "\n"
+                        #line = next(lines).decode("utf-8")
                 elif re.sub(r"\s", "", line).startswith("process") and "{" in line:
                     # Inputs for the module
                     line = next(lines).decode("utf-8")
