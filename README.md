@@ -50,6 +50,9 @@ components:
   modules:
     - tool/subtool
     - tool2
+testdata:
+  - - "[ id:'test' ]"
+    - "file(params.modules_testdata_base_path + 'path/to/fasta.fasta', checkIfExists: true)"
 ```
 
 ## Creating a module form a class
