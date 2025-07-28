@@ -182,7 +182,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             self.run_module += f"        .set {{ {i_channel + '_branch'} }}\n"
         self.run_module += "\n"
         # Run the included modules
-        self.components_args_inputs = {} # The inputs used for each component
+        self.components_args_inputs = {}  # The inputs used for each component
+        self.components_names_outputs = {}  # The output channel names of each component matching class output channel names
         for component in self.components:
             # Read component meta.yml file
             base_url = f"https://raw.githubusercontent.com/{self.nfcore_org}/modules/refs/heads/master/modules/{self.nfcore_org}/{component}/meta.yml"
@@ -194,6 +195,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             component_args = self._compare_inputs(component_meta["input"], access_inputs)
             component_outs = self._compare_outputs(component_meta["output"])
             self.components_args_inputs[component] = component_args
+            self.components_names_outputs[component] = component_outs
             if component_args:
                 self.run_module += f"""    {module_name}( {", ".join(component_args)} )\n"""
             if component_outs:
@@ -231,7 +233,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         return True
 
     def _compare_inputs(self, component_info: list[list[dict]], input_channel_names: list[str]) -> Optional[list[str]]:
-        """Compare the inputs of the class with the component."""
+        """Compare the inputs of the class with the component.
+        Returns a list of the different inputs, with empty lists if the input should not be provided."""
         component_run_args = []
         for component_channel in component_info:
             found_channel = False
@@ -271,7 +274,8 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             return None
 
     def _compare_outputs(self, component_info: dict) -> Optional[dict]:
-        """Compare the outputs of the class with the component."""
+        """Compare the outputs of the class with the component.
+        Returns a dictionary with the output channel name from the class and the equivalent output channel name from the component."""
         component_out_channels = {}
         for component_ch_name, component_channel in component_info.items():
             for ch_name, class_channel in self.outputs_yml.items():
@@ -306,160 +310,38 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         else:
             return None
 
-    def _extract_block_with_braces(self, text: str, start_keyword: str) -> str:
-        """
-        Finds the block starting with 'start_keyword {' and returns the content until the matching closing brace.
-        """
-        start = re.search(rf'{re.escape(start_keyword)}\s*\{{', text)
-        if not start:
-            return None
-        start_idx = start.end()  # start after the first '{'
-        brace_count = 1
-        end = start_idx
-        while end < len(text):
-            if text[end] == '{':
-                brace_count += 1
-            elif text[end] == '}':
-                brace_count -= 1
-                if brace_count == 0:
-                    break
-            end += 1
-        return text[start_idx:end].strip() if brace_count == 0 else None
-
-    def _parse_nftest_file(self, file_content: str) -> dict:
-        """Parse the main.nf.test file of a module and store all tests, their input definitions, assertions, and setup blocks (if present)."""
-        # Get all test names
-        test_name_pattern = re.compile(r'test\s*\(\s*"(?P<name>[^"]+)"\s*\)\s*\{')
-        test_names = [m.group("name") for m in test_name_pattern.finditer(file_content)]
-
-        # Split content by test declaration
-        splits = test_name_pattern.split(file_content)
-        blocks = splits[1:]  # Skip code before the first test
-        blocks = [b for b in blocks if b not in test_names] # Remove test names from blocks
-
-        results = {}
-        for name, block in zip(test_names, blocks):
-            results[name] = {
-                "setup": self._extract_block_with_braces(block, "setup"),
-                "process": self._extract_block_with_braces(block, "process"),
-                "then": self._extract_block_with_braces(block, "then")
-            }
-
-        return results
-
     def _generate_nftest_code(self) -> None:
         """Generate the code for nf-tests."""
-        self.tests = ""
+        self.tests = ""  # Finall nf-test code
+
+        test_data_per_channel = {}
+        for ch_name, test_dataset in zip(self.input_channels.split(), self.test_datasets):
+            test_data_per_channel[ch_name] = test_dataset
+
         for component in self.components:
-            module_inputs = []
-            module_asserts = []
-            # Parse module test
-            base_url = f"https://raw.githubusercontent.com/{self.nfcore_org}/modules/refs/heads/master/modules/{self.nfcore_org}/{component}/tests/main.nf.test"
-            response = requests.get(base_url)
-            response.raise_for_status()
-            file_content = response.content
-            file_content = file_content.decode("utf-8")
-            test_blocks = self._parse_nftest_file(file_content)
-
-            # TODO: select the correct test
-
-            # Add composed module to tag
-            if test_blocks[test]["setup"]:
-                composed_module_name_pattern = re.compile(r"run\(['\"](.*)['\"]\)")
-                composed_names = [m.group(1) for m in composed_module_name_pattern.finditer(test_blocks[test]["setup"])]
-                for composed_name in composed_names:
-                    if composed_name not in self.components_tags:
-                        self.components_tags += f"""    tag "{composed_name}"\n"""
-                # Update path to module script
-                test_blocks[test]["setup"] = re.sub(r"(script\s*['\"])(.*?)(['\"])", rf"../../../../modules/{self.nfcore_org}/{composed_name}/main.nf", test_blocks[test]["setup"])
-
-            if test_blocks[test]["process"]:
-                input_pattern = re.compile(r'(input\[([0-9]*)\]\s*=\s*|""")')
-                inputs_iter = test_name_pattern.finditer(test_blocks[test]["process"])
-                input_index = [m.group(2) for m in inputs_iter]
-                input_names = [m.group(1) for m in inputs_iter]
-
-                input_splits = input_pattern.split(test_blocks[test]["process"])
-                input_blocks = input_splits[1:] # Skip code before the first input
-                input_blocks = [b for b in input_blocks if b not in input_names] # Remove input names from blocks
-
-                input_blocks_channels = [f"Channel.of ( {i} )" for i in input_blocks if not i.strip().startswith("Channel")]
-
-
-
-
-
-
-            for line in lines:
-                line = line.decode("utf-8")
-                if re.sub(r"\s", "", line).startswith("setup") and "{" in line:
-                    # This is a composed module
-                    while "when {" not in line and not line.strip().startswith("test"):
-                        #if line.strip().startswith("run("):
-                        #    composed_name = line.split('"')[1].lower()
-                        #    composed_name = re.sub(r"_", "/", composed_name)
-                        #    # Add composed module to tags
-                        #    if composed_name not in self.components_tags:
-                        #        self.components_tags += f"""    tag "{composed_name}"\n"""
-                        #if line.strip().startswith("script"):
-                        #    # update path for subworkflow
-                        #    line_split = line.split('"')
-                        #    line = (
-                        #        line_split[0]
-                        #        + f'"../../../../modules/{self.org}/{composed_name}/main.nf"'
-                        #        + line_split[2]
-                        #    )
-                        #setup_code += line + "\n"
-                        #line = next(lines).decode("utf-8")
-                elif re.sub(r"\s", "", line).startswith("process") and "{" in line:
-                    # Inputs for the module
-                    line = next(lines).decode("utf-8")
-                    while re.sub(r"\s", "", line) != "}":
-                        match = re.search(r"=\s*[A-Z][^=]*\.out[^=]*$", line)  # = TOOL_SUBTOOL.out
-                        if line.strip().startswith("input") and "Channel.of" not in line and not match:
-                            line_tmp = line.split("=")
-                            line = line_tmp[0] + " = Channel.of(" + line_tmp[1]
-                        if line.strip() == "]":
-                            line = f"""                        , '{component.replace("/", "_")}'\n                    ])\n"""
-                        elif match and line.strip().endswith("]}"):
-                            line = f"""{line.split("]}")[0]}, '{component.replace("/", "_")}']}}\n"""
-                        # check left-padding
-                        extra_spaces = (len(line) - len(line.lstrip())) % 4
-                        if extra_spaces != 0:
-                            line = " " * (4 - extra_spaces) + line
-                        module_inputs.append(line)
-                        line = next(lines).decode("utf-8")
-                        # close previous Channel.of if needed
-                        if (
-                            ("input" in line or '"""' in line or line.strip() == "")
-                            and "Channel.of" in module_inputs[-1]
-                            and not module_inputs[-1].endswith(")")
-                        ):
-                            module_inputs[-1] = module_inputs[-1] + " )\n"
-                        else:
-                            module_inputs[-1] = module_inputs[-1] + "\n"
-                    found_input = True
-                if "then" in line:
-                    while re.sub(r"\s", "", line) != "}":
-                        line = re.sub(r"process.", "workflow.", line)
-                        groups = re.search(r"workflow\.out\.?\s*([^\s)]*)\)\.match\((\".*\")*\)", line)
-                        # workflow.out.FOO).match("bar")
-                        # workflow.out).match()
-                        # workflow.out).match("baz")
-                        # workflow.out.FOO_BAR).match("snap1", "snap2")
-                        if groups:
-                            # give a new name to snapshot to avoid duplications
-                            channel_name = groups.group(1)
-                            snapshot_name = f"\"{component.replace('/', '_')}_{channel_name}\""
-                            line = re.sub(
-                                r"match\((\".*\")*\)",
-                                rf"match({snapshot_name if len(channel_name) > 0 else ''})",
-                                line,
-                            )
-                        module_asserts.append(line + "\n")
-                        line = next(lines).decode("utf-8")
-                    found_test = True
-                if found_input and found_test:
-                    break
-            # Construct subworkflow tests
-            self.tests += f"""    test("run {component}") {{\n\n{setup_code}        when {{\n            workflow {{\n{''.join(module_inputs)}            }}\n        }}\n\n{''.join(module_asserts)}        }}\n    }}\n\n"""
+            test_code = f'\ttest("{component}") {{\n\n'
+            test_code += "\t\twhen {\n"
+            test_code += "\t\t\tprocess {\n"
+            test_code += '\t\t\t\t"""\n'
+            if component in self.components_args_inputs:
+                component_inputs = self.components_args_inputs[component]
+                assert isinstance(component_inputs, list)  # mypy
+                for i, input in enumerate(component_inputs):
+                    if input != "[]":
+                        input_ch_name = input.split(f"_branch.{component.replace('/', '_')}")[0]
+                        list_channel = [td.strip('"').strip("'") for td in test_data_per_channel[input_ch_name]]
+                        list_channel.append("'" + component.replace("/", "_") + "'")
+                        test_code += f"\t\t\t\tinput[{i}] = Channel.of( {', '.join(list_channel)} )\n"
+                    else:
+                        test_code += f"\t\t\t\tinput[{i}] = Channel.of( {input} )\n"
+            test_code += '\t\t\t\t"""\n'
+            test_code += "\t\t\t}\n"
+            test_code += "\t\t}\n\n"
+            test_code += "\t\tthen {\n"
+            test_code += "\t\t\tassertAll(\n"
+            test_code += "\t\t\t\t{ assert workflow.success },\n"
+            test_code += "\t\t\t\t{ assert snapshot(workflow.out).match() },\n"
+            test_code += "\t\t\t)\n"
+            test_code += "\t\t}\n"
+            test_code += "\t}\n\n"
+            self.tests += test_code

@@ -238,6 +238,8 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
             self.class_modules = content["components"]["modules"]
         else:
             self.class_modules = []
+        # Get test data
+        self.test_datasets = content["testdata"]
 
     def _render_template(self) -> None:
         """

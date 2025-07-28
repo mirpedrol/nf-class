@@ -12,3 +12,4 @@
 - Remove `prefix` and `suffix` options from `expand-class` command [#11](https://github.com/mirpedrol/nf-class/pull/11)
 - Add the class sname to the `meta.yml` of modules [#12](https://github.com/mirpedrol/nf-class/pull/12)
 - Fix component name for subworkflows when class name was not provided [#13](https://github.com/mirpedrol/nf-class/pull/13)
+- Update command `nf-class subworkflows expand-class` to use nf-core modules [#33](https://github.com/mirpedrol/nf-class/pull/33)
