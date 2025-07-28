@@ -328,10 +328,13 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                 assert isinstance(component_inputs, list)  # mypy
                 for i, input in enumerate(component_inputs):
                     if input != "[]":
-                        input_ch_name = input.split(f"_branch.{component.replace('/', '_')}")[0]
-                        list_channel = [td.strip('"').strip("'") for td in test_data_per_channel[input_ch_name]]
-                        list_channel.append("'" + component.replace("/", "_") + "'")
-                        test_code += f"\t\t\t\tinput[{i}] = Channel.of( {', '.join(list_channel)} )\n"
+                        try:
+                            input_ch_name = input.split(f"_branch.{component.replace('/', '_')}")[0]
+                            list_channel = [td.strip('"').strip("'") for td in test_data_per_channel[input_ch_name]]
+                            list_channel.append("'" + component.replace("/", "_") + "'")
+                            test_code += f"\t\t\t\tinput[{i}] = Channel.of( {', '.join(list_channel)} )\n"
+                        except AttributeError:
+                            log.error("Test data elements must be provided as strings.")
                     else:
                         test_code += f"\t\t\t\tinput[{i}] = Channel.of( {input} )\n"
             test_code += '\t\t\t\t"""\n'
