@@ -319,10 +319,10 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             test_data_per_channel[ch_name] = test_dataset
 
         for component in self.components:
-            test_code = f'\ttest("{component}") {{\n\n'
-            test_code += "\t\twhen {\n"
-            test_code += "\t\t\tprocess {\n"
-            test_code += '\t\t\t\t"""\n'
+            test_code = f'    test("{component}") {{\n\n'
+            test_code += "        when {\n"
+            test_code += "            process {\n"
+            test_code += '                """\n'
             if component in self.components_args_inputs:
                 component_inputs = self.components_args_inputs[component]
                 assert isinstance(component_inputs, list)  # mypy
@@ -332,19 +332,19 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                             input_ch_name = input.split(f"_branch.{component.replace('/', '_')}")[0]
                             list_channel = [td.strip('"').strip("'") for td in test_data_per_channel[input_ch_name]]
                             list_channel.append("'" + component.replace("/", "_") + "'")
-                            test_code += f"\t\t\t\tinput[{i}] = Channel.of( {', '.join(list_channel)} )\n"
+                            test_code += f"                input[{i}] = Channel.of( {', '.join(list_channel)} )\n"
                         except AttributeError:
                             log.error("Test data elements must be provided as strings.")
                     else:
-                        test_code += f"\t\t\t\tinput[{i}] = Channel.of( {input} )\n"
-            test_code += '\t\t\t\t"""\n'
-            test_code += "\t\t\t}\n"
-            test_code += "\t\t}\n\n"
-            test_code += "\t\tthen {\n"
-            test_code += "\t\t\tassertAll(\n"
-            test_code += "\t\t\t\t{ assert workflow.success },\n"
-            test_code += "\t\t\t\t{ assert snapshot(workflow.out).match() },\n"
-            test_code += "\t\t\t)\n"
-            test_code += "\t\t}\n"
-            test_code += "\t}\n\n"
+                        test_code += f"                input[{i}] = Channel.of( {input} )\n"
+            test_code += '                """\n'
+            test_code += "            }\n"
+            test_code += "        }\n\n"
+            test_code += "        then {\n"
+            test_code += "            assertAll(\n"
+            test_code += "                { assert workflow.success },\n"
+            test_code += "                { assert snapshot(workflow.out).match() },\n"
+            test_code += "            )\n"
+            test_code += "        }\n"
+            test_code += "    }\n\n"
             self.tests += test_code
