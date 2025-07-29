@@ -266,7 +266,10 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
                             component_run_args.append(ch_name)
                             break
             if not found_channel:
-                component_run_args.append("[]")
+                if len(component_channel) > 1:
+                    component_run_args.append(str([[]] * len(component_channel)))
+                else:
+                    component_run_args.append("[]")
 
         if all(name in component_run_args for name in input_channel_names):
             return component_run_args
@@ -314,29 +317,20 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         """Generate the code for nf-tests."""
         self.tests = ""  # Finall nf-test code
 
-        test_data_per_channel = {}
-        for ch_name, test_dataset in zip(self.input_channels.split(), self.test_datasets):
-            test_data_per_channel[ch_name] = test_dataset
-
         for component in self.components:
             test_code = f'    test("{component}") {{\n\n'
             test_code += "        when {\n"
-            test_code += "            process {\n"
+            test_code += "            workflow {\n"
             test_code += '                """\n'
-            if component in self.components_args_inputs:
-                component_inputs = self.components_args_inputs[component]
-                assert isinstance(component_inputs, list)  # mypy
-                for i, input in enumerate(component_inputs):
-                    if input != "[]":
-                        try:
-                            input_ch_name = input.split(f"_branch.{component.replace('/', '_')}")[0]
-                            list_channel = [td.strip('"').strip("'") for td in test_data_per_channel[input_ch_name]]
-                            list_channel.append("'" + component.replace("/", "_") + "'")
-                            test_code += f"                input[{i}] = Channel.of( {', '.join(list_channel)} )\n"
-                        except AttributeError:
-                            log.error("Test data elements must be provided as strings.")
-                    else:
-                        test_code += f"                input[{i}] = Channel.of( {input} )\n"
+
+            for i, ch_test_data in enumerate(self.test_datasets):
+                try:
+                    list_channel = [td.strip('"').strip("'") for td in ch_test_data]
+                    list_channel.append("'" + component.replace("/", "_") + "'")
+                    test_code += f"                input[{i}] = Channel.of( [{', '.join(list_channel)}] )\n"
+                except AttributeError:
+                    log.error("Test data elements must be provided as strings.")
+
             test_code += '                """\n'
             test_code += "            }\n"
             test_code += "        }\n\n"
