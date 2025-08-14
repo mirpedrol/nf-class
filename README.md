@@ -46,6 +46,13 @@ output:
             type: file
             description: The output file in TXT format of this class
             pattern: "*.txt"
+components:
+  modules:
+    - tool/subtool
+    - tool2
+testdata:
+  - - "[ id:'test' ]"
+    - "file(params.modules_testdata_base_path + 'path/to/fasta.fasta', checkIfExists: true)"
 ```
 
 ## Creating a module form a class
@@ -75,7 +82,7 @@ nf-class modules create-from-class <classname>
 ## Expanding a class subworkflow
 
 A `class` definition can be used to generate subworkflow which can run any of the modules belonging to that class.
-It is also possible to specify a list of module form the specified class to avoid adding all possible module.
+It is also possible to specify a list of modules form the specified class to avoid adding all possible modules.
 
 This command will create a new subworkflow with the corresponding inputs and outputs and metadata. A parameter corresponding to the class name is used to slect which module to run.
 No parts of the subworkflow should have to be modified manually.

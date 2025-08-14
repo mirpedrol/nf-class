@@ -175,6 +175,17 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         ]
         return sorted(available_classes)
 
+    def _write_channel(self, element_type, element_name, in_out):
+        qualifier = self._get_qualifier(element_type)
+        if any(not c.isalnum() for c in element_name):
+            element_name = f'"{element_name}"'
+        if in_out == "input":
+            self.inputs += f"{qualifier}({element_name})"
+            self.input_vars.append(element_name)
+        elif in_out == "output":
+            self.outputs += f"{qualifier}({element_name}), "
+            self.output_vars.append(element_name)
+
     def _get_class_info(self) -> None:
         """
         Get class information from the class yml file.
@@ -193,7 +204,7 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
         self.outputs_yml_str = yaml.dump({"output": self.outputs_yml})
         # Obtain input channels
         self.inputs = ""
-        self.input_vars = []
+        self.input_vars: list = []
         for channel in content["input"]:
             if len(channel) > 1:
                 self.inputs += "tuple "
@@ -205,28 +216,30 @@ class ComponentCreateFromClass(nf_core.components.create.ComponentCreate):
                     self.inputs += ", "
                 element_name = list(element.keys())[0]
                 element_type = element[element_name]["type"]
-                qualifier = self._get_qualifier(element_type)
-                if any(not c.isalnum() for c in element_name):
-                    element_name = f'"{element_name}"'
-                self.inputs += f"{qualifier}({element_name})"
-                self.input_vars.append(element_name)
+                self._write_channel(element_type, element_name, "input")
             self.inputs += "\n"
-        # Obtain input channels
+        # Obtain output channels
         self.outputs = ""
-        self.output_vars = []
-        for channel in content["output"]:
-            channel_name = list(channel.keys())[0]
-            if len(channel[channel_name]) > 1:
+        self.output_vars: list = []
+        for channel_name in content["output"].keys():
+            channel = content["output"][channel_name][0]
+            if isinstance(channel, list):
                 self.outputs += "tuple "
-            for element in channel[channel_name]:
-                element_name = list(element.keys())[0]
-                element_type = element[element_name]["type"]
-                qualifier = self._get_qualifier(element_type)
-                if any(not c.isalnum() for c in element_name):
-                    element_name = f'"{element_name}"'
-                self.outputs += f"{qualifier}({element_name}), "
-                self.output_vars.append(element_name)
+                for element in channel:
+                    element_name = list(element.keys())[0]
+                    element_type = element[element_name]["type"]
+                    self._write_channel(element_type, element_name, "output")
+            elif isinstance(channel, dict):
+                element_name = list(channel.keys())[0]
+                element_type = channel[element_name]["type"]
+                self._write_channel(element_type, element_name, "output")
             self.outputs += f"emit: {channel_name}\n    "
+        if "components" in content and "modules" in content["components"]:
+            self.class_modules = content["components"]["modules"]
+        else:
+            self.class_modules = []
+        # Get test data
+        self.test_datasets = content["testdata"]
 
     def _render_template(self) -> None:
         """
