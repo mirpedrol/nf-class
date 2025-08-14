@@ -337,7 +337,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             test_code += "        then {\n"
             test_code += "            assertAll(\n"
             test_code += "                { assert workflow.success },\n"
-            test_code += "                { assert snapshot(workflow.out).match() },\n"
+            test_code += f'                {{ assert snapshot(workflow.out).match("{component}") }},\n'
             test_code += "            )\n"
             test_code += "        }\n"
             test_code += "    }\n\n"
