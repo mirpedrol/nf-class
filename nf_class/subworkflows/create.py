@@ -98,7 +98,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         ### List of component tags for nf-tests ###
         self.components_tags = ""
         for comp in self.components:
-            self.components_tags += f"""    tag "{comp}"\n"""
+            self.components_tags += f"""    tag "subworkflows/../../modules/{self.nfcore_org}/{comp}"\n"""
 
         ### Generated code for include statements ###
         self.include_statements = ""
