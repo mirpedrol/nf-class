@@ -369,3 +369,37 @@ def command_subworkflows_expand_class(
     except LookupError as e:
         log.error(e)
         sys.exit(1)
+
+
+@subworkflows.command("patch")
+@click.pass_context
+@click.argument("classname", type=str, callback=normalize_case, required=False, metavar="<class_name>")
+@click.option(
+    "-d",
+    "--dir",
+    type=click.Path(exists=True),
+    default=".",
+    help=r"Modules repository directory. [dim]\[default: current working directory][/]",
+    metavar="<directory>",
+)
+def command_subworkflows_patch(
+    ctx,
+    classname,
+    dir,
+):
+    """
+    Patch an existing subworkflow compared with the automatically generated one from expand-class.
+    """
+    from nf_class.subworkflows.patch import SubworkflowPatch
+
+    try:
+        patch_obj = SubworkflowPatch(
+            dir,
+            ctx.obj["modules_repo_url"],
+            ctx.obj["modules_repo_branch"],
+            ctx.obj["modules_repo_no_pull"],
+        )
+        patch_obj.patch(classname)
+    except (UserWarning, LookupError) as e:
+        log.error(e)
+        sys.exit(1)
