@@ -75,17 +75,27 @@ class ClassComponentPatch(ComponentCommand):
         yaml = ruamel.yaml.YAML()
         with open(component_relpath / "meta.yml") as fh:
             meta_yaml = yaml.load(fh)
-        author = meta_yaml.get("author", None)
+        author = None
+        authors = meta_yaml.get("authors", None)
+        if authors is not None:
+            author = authors[0]
 
-        # Create a temporary directory for storing the unchanged version of the component
+        # Create a temporary directory for storing the bare generated subworkflow
         install_dir = tempfile.mkdtemp()
+        # Copy .nf-core.yml from current modules repo in self.directory to install_dir
+        src_nfcore_yml = Path(self.directory) / ".nf-core.yml"
+        dst_nfcore_yml = Path(install_dir) / ".nf-core.yml"
+        if src_nfcore_yml.exists():
+            shutil.copy(src_nfcore_yml, dst_nfcore_yml)
+
+        # Create a class
         try:
             expand_class_obj = SubworkflowExpandClass(
                 classname=component,
                 dir=install_dir,
                 author=author,
             )
-            component_install_dir = Path(install_dir, component)
+            component_install_dir = Path(install_dir, self.component_type, self.org, component)
             expand_class_obj.expand_class()
         except UserWarning as e:
             raise UserWarning(f"Failed to expand class '{component}' from remote ({self.modules_repo.remote_url}): {e}")
