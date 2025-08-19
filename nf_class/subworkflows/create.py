@@ -1,5 +1,7 @@
 import logging
 import re
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -8,6 +10,7 @@ import yaml
 
 from nf_class.components.create import ComponentCreateFromClass
 from nf_class.utils import NF_CLASS_MODULES_REMOTE
+from nf_core.components.components_differ import ComponentsDiffer
 from nf_core.pipelines.lint_utils import run_prettier_on_file
 
 log = logging.getLogger(__name__)
@@ -87,9 +90,75 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         self._render_template()
         log.info(f"Created component template: '{self.component}'")
 
+        # Check if the subworkflow is patched
+        patch_path = Path(self.directory, self.component_type, self.org, self.classname, f"{self.classname}.diff")
+        if patch_path.exists():
+            self._apply_patch(patch_path, write_file=False)
+
         new_files = [str(path) for path in self.file_paths.values()]
         run_prettier_on_file(new_files)
         log.info("Created following files:\n  " + "\n  ".join(new_files))
+
+    def _apply_patch(self, patch_path: Path, write_file=True) -> bool:
+        """
+        Try applying a patch file to the new subworkflow files
+
+        Args:
+            patch_path (Path): The path to patch file
+
+        Returns:
+            (bool): Whether the patch application was successful
+        """
+        log.info(f"Found patch for {self.component_type[:-1]} '{self.classname}'. Trying to apply it to new files")
+
+        subworkflow_relpath = Path(self.component_type, self.org, self.classname)
+        subworkflow_dir = Path(self.directory, subworkflow_relpath)
+
+        # Check that paths in patch file are updated
+        self.check_patch_paths(patch_path, self.classname)
+
+        # Copy the installed files to a new temporary directory to save them for later use
+        temp_dir = Path(tempfile.mkdtemp())
+        temp_component_dir = temp_dir / self.classname
+        shutil.copytree(subworkflow_dir, temp_component_dir)
+
+        try:
+            new_files = ComponentsDiffer.try_apply_patch(
+                self.component_type, self.classname, self.org, patch_path, temp_component_dir
+            )
+        except LookupError as e:
+            log.warning(
+                f"Failed to apply patch for {self.component_type[:-1]} '{self.classname}'. You will have to apply the patch manually.\nReason: {e}"
+            )
+            return False
+
+        # Write the patched files to a temporary directory
+        log.debug("Writing patched files.")
+        for file, new_content in new_files.items():
+            fn = temp_component_dir / file
+            with open(fn, "w") as fh:
+                fh.writelines(new_content)
+
+        # Create the new patch file
+        log.debug("Regenerating patch file")
+        ComponentsDiffer.write_diff_file(
+            Path(patch_path),
+            self.classname,
+            self.org,
+            subworkflow_dir,
+            temp_component_dir,
+            file_action="w",
+            for_git=False,
+            dsp_from_dir=subworkflow_relpath,
+            dsp_to_dir=subworkflow_relpath,
+        )
+
+        # Move the patched files to the install dir
+        log.debug("Overwriting installed files with patched files")
+        shutil.rmtree(subworkflow_dir)
+        shutil.copytree(temp_component_dir, subworkflow_dir)
+
+        return True
 
     def _get_info_for_expanding(self) -> None:
         """Get the information needed to expand the subworkflow with modules from a class."""
