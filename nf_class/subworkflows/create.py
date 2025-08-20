@@ -7,6 +7,7 @@ from typing import Optional
 
 import requests
 import yaml
+from git import Git, GitCommandError
 
 from nf_class.components.create import ComponentCreateFromClass
 from nf_class.utils import NF_CLASS_MODULES_REMOTE
@@ -93,7 +94,15 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
         # Check if the subworkflow is patched
         patch_path = Path(self.directory, self.component_type, self.org, self.classname, f"{self.classname}.diff")
         if patch_path.exists():
-            self._apply_patch(patch_path, write_file=False)
+            if not self._apply_patch(patch_path, write_file=False):
+                try:
+                    git_cmd = Git(self.directory)
+                    git_cmd.apply("-p0", "--verbose", str(patch_path))
+                    log.info("Applied patch using GitPython (git apply).")
+                except GitCommandError as e:
+                    log.warning(
+                        f"Failed to apply patch using GitPython for {self.component_type[:-1]} '{self.classname}'. You will have to apply the patch manually.\nError: {e}"
+                    )
 
         new_files = [str(path) for path in self.file_paths.values()]
         run_prettier_on_file(new_files)
@@ -128,7 +137,7 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             )
         except LookupError as e:
             log.warning(
-                f"Failed to apply patch for {self.component_type[:-1]} '{self.classname}'. You will have to apply the patch manually.\nReason: {e}"
+                f"Failed to apply patch for {self.component_type[:-1]} '{self.classname}' with nf-core.\nReason: {e}"
             )
             return False
 
