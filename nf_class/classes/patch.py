@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Optional, Union
 
 import questionary
 import ruamel.yaml
@@ -34,11 +35,11 @@ class ClassPatch(ComponentCommand):
     """
 
     def __init__(
-        self, local_repo_path: str | Path = ".", remote_url=None, branch=None, no_pull=False, no_prompts=False
+        self, local_repo_path: Union[str, Path] = ".", remote_url=None, branch=None, no_pull=False, no_prompts=False
     ):
         super().__init__("subworkflows", local_repo_path, remote_url, branch, no_pull, no_prompts=no_prompts)
-        self.remote_url: str | None = remote_url
-        self.branch: str | None = branch
+        self.remote_url: Optional[str] = remote_url
+        self.branch: Optional[str] = branch
 
     def _parameter_checks(self, classname, components):
         """Checks the compatibility of the supplied parameters.

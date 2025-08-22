@@ -140,10 +140,9 @@ class TestSubworkflows(unittest.TestCase):
             classname="msa_alignment",
             dir=self.class_modules,
             author="@me",
-            expand_modules="clustalo/align,famsa/align",
             force=True,
         )
-        assert subworkflow_expand.expand_class()
+        subworkflow_expand.expand_class()
 
         # Assert patch file is still there and contains some of the expected lines
         assert (self.class_modules / "subworkflows" / "mirpedrol" / "msa_alignment" / "msa_alignment.diff").is_file()
@@ -154,9 +153,12 @@ class TestSubworkflows(unittest.TestCase):
             assert '+    test("learnmsa/align - stub") {' in lines
 
         # Assert main.nf has the corresponding modifications
-        assert (self.class_modules / "subworkflows" / "mirpedrol" / "msa_alignment" / "main.nf").is_file()
-        with open(self.class_modules / "subworkflows" / "mirpedrol" / "msa_alignment" / "main.nf") as fh:
+        assert (
+            self.class_modules / "subworkflows" / "mirpedrol" / "msa_alignment" / "tests" / "main.nf.test"
+        ).is_file()
+        with open(self.class_modules / "subworkflows" / "mirpedrol" / "msa_alignment" / "tests" / "main.nf.test") as fh:
             lines = fh.readlines()
             lines = ("").join(lines)
+            print(lines)
             assert 'test("learnmsa/align") {' not in lines
             assert 'test("learnmsa/align - stub") {' in lines
