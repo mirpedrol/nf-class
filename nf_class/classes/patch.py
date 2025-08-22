@@ -24,6 +24,7 @@ class ClassPatch(ComponentCommand):
         remote_url (str | None): Remote URL to the modules repo.
         branch (str | None): The branch from the remote modules repo to use.
         no_pull (bool): Do not pull in latest changes to local clone of modules repository.
+        no_prompts (book): If skip all interactive prompts.
 
     Raises:
         UserWarning: If trying to patch in a pipeline repo or nf-core/modules repo.
@@ -32,8 +33,10 @@ class ClassPatch(ComponentCommand):
         UserWarning: Any other error while creating the patch.
     """
 
-    def __init__(self, local_repo_path: str | Path = ".", remote_url=None, branch=None, no_pull=False):
-        super().__init__("subworkflows", local_repo_path, remote_url, branch, no_pull)
+    def __init__(
+        self, local_repo_path: str | Path = ".", remote_url=None, branch=None, no_pull=False, no_prompts=False
+    ):
+        super().__init__("subworkflows", local_repo_path, remote_url, branch, no_pull, no_prompts=no_prompts)
         self.remote_url: str | None = remote_url
         self.branch: str | None = branch
 
@@ -77,7 +80,7 @@ class ClassPatch(ComponentCommand):
         component_current_dir = Path(self.directory, component_relpath)
         patch_path = Path(self.directory, patch_relpath)
 
-        if patch_path.exists():
+        if patch_path.exists() and not self.no_prompts:
             remove = questionary.confirm(
                 f"Patch exists for subworkflow '{component_fullname}'. Do you want to regenerate it?",
                 style=nfcore_question_style,
@@ -86,10 +89,12 @@ class ClassPatch(ComponentCommand):
                 os.remove(patch_path)
             else:
                 return
+        elif patch_path.exists() and self.no_prompts:
+            os.remove(patch_path)
 
         # Get info from current subworkflow
         yaml = ruamel.yaml.YAML()
-        with open(component_relpath / "meta.yml") as fh:
+        with open(component_current_dir / "meta.yml") as fh:
             meta_yaml = yaml.load(fh)
         author = None
         authors = meta_yaml.get("authors", None)
