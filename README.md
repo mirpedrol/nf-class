@@ -8,7 +8,6 @@ Wrapper around nf-core/tools to work with class-modules
 ## Table of contents
 
 - [Classes of modules](#classes-of-modules)
-- [Creating a module form a class](#creating-a-module-from-a-class)
 - [Expanding a class subworkflow](#expanding-a-class-subworkflow)
 
 ## Classes of modules
@@ -55,36 +54,13 @@ testdata:
     - "file(params.modules_testdata_base_path + 'path/to/fasta.fasta', checkIfExists: true)"
 ```
 
-## Creating a module form a class
-
-A `class` definition can be used to generate modules which belong to these class.
-
-This command will create a new module with the corresponding inputs and outputs and metadata. Very little parts of the module have to be modified manually:
-
-- The tool command
-- The input data for nf-tests
-- The assertions and snapshots for nf-tests (if snapshoting the complete output fails)
-
-```bash
-nf-class modules create-from-class <classname>
-```
-
-### Options
-
-- `--toolname` `-t`: Name of the tool of the module to create.
-- `--dir` `-d`: Modules repository directory. [default: current working directory].
-- `--author` `-a`: Module author's GitHub username prefixed with '@'.
-- `--force` `-f`: Overwrite any files if they already exist.
-- `--conda-name` `-c`: Name of the conda package to use.
-- `--conda-package-version` `-p`: Version of conda package to use.
-- `--help` `-h`: Show help message and exit.
-
 ## Expanding a class subworkflow
 
 A `class` definition can be used to generate subworkflow which can run any of the modules belonging to that class.
 It is also possible to specify a list of modules form the specified class to avoid adding all possible modules.
 
-This command will create a new subworkflow with the corresponding inputs and outputs and metadata. A parameter corresponding to the class name is used to slect which module to run.
+This command will create a new subworkflow with the corresponding inputs and outputs and metadata.
+A parameter corresponding to the class name is used to slect which module to run.
 No parts of the subworkflow should have to be modified manually.
 
 ```bash

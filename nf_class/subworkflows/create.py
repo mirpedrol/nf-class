@@ -48,8 +48,6 @@ class SubworkflowExpandClass(ComponentCreateFromClass):
             classname,
             author,
             force,
-            None,
-            None,
             modules_repo_url,
             modules_repo_branch,
         )
