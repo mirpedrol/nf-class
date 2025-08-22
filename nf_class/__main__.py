@@ -27,15 +27,8 @@ click.rich_click.COMMAND_GROUPS = {
         {
             "name": "Commands",
             "commands": [
-                "modules",
                 "subworkflows",
             ],
-        },
-    ],
-    "nf-class modules": [
-        {
-            "name": "Developing new modules",
-            "commands": ["create-from-class"],
         },
     ],
     "nf-class subworkflows": [
@@ -143,129 +136,6 @@ def nf_class_cli(ctx, verbose, hide_progress, log_file):
         "verbose": verbose,
         "hide_progress": hide_progress or verbose,  # Always hide progress bar with verbose logging
     }
-
-
-# nf-class modules
-@nf_class_cli.group()
-@click.option(
-    "-g",
-    "--git-remote",
-    type=str,
-    default=NF_CLASS_MODULES_REMOTE,
-    help="Remote git repo to fetch files from",
-)
-@click.option(
-    "-b",
-    "--branch",
-    type=str,
-    default=None,
-    help="Branch of git repository hosting modules.",
-)
-@click.option(
-    "-N",
-    "--no-pull",
-    is_flag=True,
-    default=False,
-    help="Do not pull in latest changes to local clone of modules repository.",
-)
-@click.pass_context
-def modules(ctx, git_remote, branch, no_pull):
-    """
-    Commands to manage Nextflow DSL2 modules (tool wrappers).
-    """
-    # ensure that ctx.obj exists and is a dict (in case `cli()` is called
-    # by means other than the `if` block below)
-    ctx.ensure_object(dict)
-
-    # Place the arguments in a context object
-    ctx.obj["modules_repo_url"] = git_remote
-    ctx.obj["modules_repo_branch"] = branch
-    ctx.obj["modules_repo_no_pull"] = no_pull
-
-
-# nf-core modules create-from-class
-@modules.command("create-from-class")
-@click.pass_context
-@click.argument("classname", type=str, callback=normalize_case, required=False, default="", metavar="<class_name>")
-@click.option(
-    "-t",
-    "--toolname",
-    type=str,
-    callback=normalize_case,
-    required=False,
-    help="Name of the tool of the module to create.",
-    metavar="<tool_name>",
-)
-@click.option(
-    "-d",
-    "--dir",
-    type=click.Path(exists=True),
-    default=".",
-    help=r"Modules repository directory. [dim]\[default: current working directory][/]",
-    metavar="<directory>",
-)
-@click.option(
-    "-a",
-    "--author",
-    type=str,
-    metavar="<author>",
-    help="Module author's GitHub username prefixed with '@'",
-)
-@click.option(
-    "-f",
-    "--force",
-    is_flag=True,
-    default=False,
-    help="Overwrite any files if they already exist",
-)
-@click.option(
-    "-c",
-    "--conda-name",
-    type=str,
-    default=None,
-    help="Name of the conda package to use",
-)
-@click.option(
-    "-p",
-    "--conda-package-version",
-    type=str,
-    default=None,
-    help="Version of conda package to use",
-)
-def command_modules_create_from_class(
-    ctx,
-    classname,
-    toolname,
-    dir,
-    author,
-    force,
-    conda_name,
-    conda_package_version,
-):
-    """
-    Create a new DSL2 module from a class-module template.
-    """
-    from nf_class.modules.create import ModuleCreateFromClass
-
-    try:
-        create_obj = ModuleCreateFromClass(
-            classname,
-            toolname,
-            dir,
-            author,
-            force,
-            conda_name,
-            conda_package_version,
-            ctx.obj["modules_repo_url"],
-            ctx.obj["modules_repo_branch"],
-        )
-        create_obj.create_from_class()
-    except UserWarning as e:
-        log.error(e)
-        sys.exit(1)
-    except LookupError as e:
-        log.error(e)
-        sys.exit(1)
 
 
 # nf-class subworkflows
