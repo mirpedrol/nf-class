@@ -220,10 +220,10 @@ def command_subworkflows_expand_class(
     """
     Create a new DSL2 subworkflow from a class.
     """
-    from nf_class.subworkflows.create import SubworkflowExpandClass
+    from nf_class.classes.expand import ClassExpand
 
     try:
-        create_obj = SubworkflowExpandClass(
+        expand_obj = ClassExpand(
             classname,
             dir,
             author,
@@ -232,7 +232,7 @@ def command_subworkflows_expand_class(
             ctx.obj["modules_repo_url"],
             ctx.obj["modules_repo_branch"],
         )
-        create_obj.expand_class()
+        expand_obj.expand_class()
     except UserWarning as e:
         log.error(e)
         sys.exit(1)
@@ -260,10 +260,10 @@ def command_subworkflows_patch(
     """
     Patch an existing subworkflow compared with the automatically generated one from expand-class.
     """
-    from nf_class.subworkflows.patch import SubworkflowPatch
+    from nf_class.classes.patch import ClassPatch
 
     try:
-        patch_obj = SubworkflowPatch(
+        patch_obj = ClassPatch(
             dir,
             ctx.obj["modules_repo_url"],
             ctx.obj["modules_repo_branch"],
