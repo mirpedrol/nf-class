@@ -16,8 +16,14 @@ log = logging.getLogger(__name__)
 
 
 class ClassComponentPatch(ComponentCommand):
+    """
+    Create a patch for the class subworkflow comparing it with the subworkflow generated form the class YAML file.
+    """
+
     def __init__(self, pipeline_dir, component_type, remote_url=None, branch=None, no_pull=False, installed_by=None):
         super().__init__(component_type, pipeline_dir, remote_url, branch, no_pull)
+        self.remote_url: str | None = remote_url
+        self.branch: str | None = branch
 
     def _parameter_checks(self, component, components):
         """Checks the compatibility of the supplied parameters.
@@ -94,6 +100,8 @@ class ClassComponentPatch(ComponentCommand):
                 classname=component,
                 dir=install_dir,
                 author=author,
+                modules_repo_url=self.remote_url,
+                modules_repo_branch=self.branch,
             )
             component_install_dir = Path(install_dir, self.component_type, self.org, component)
             expand_class_obj.expand_class()
