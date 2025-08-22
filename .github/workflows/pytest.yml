@@ -30,16 +30,16 @@ jobs:
     runs-on: "ubuntu-latest"
     strategy:
       matrix:
-        python-version: ["3.8", "3.12"]
+        python-version: ["3.9", "3.12"]
         runner: ["ubuntu-latest"]
         include:
-          - python-version: "3.8"
+          - python-version: "3.9"
             runner: "ubuntu-20.04"
 
     steps:
       - name: Check conditions
         id: conditions
-        run: echo "run-tests=${{ github.ref == 'refs/heads/master' || (matrix.runner == 'ubuntu-20.04' && matrix.python-version == '3.8') }}" >> "$GITHUB_OUTPUT"
+        run: echo "run-tests=${{ github.ref == 'refs/heads/master' || (matrix.runner == 'ubuntu-20.04' && matrix.python-version == '3.9') }}" >> "$GITHUB_OUTPUT"
 
     outputs:
       python-version: ${{ matrix.python-version }}
@@ -92,7 +92,7 @@ jobs:
           pip install -e .
 
       - name: Downgrade git to the Ubuntu official repository's version
-        if: ${{ needs.setup.outputs.runner == 'ubuntu-20.04' && needs.setup.outputs.python-version == '3.8' }}
+        if: ${{ needs.setup.outputs.runner == 'ubuntu-20.04' && needs.setup.outputs.python-version == '3.9' }}
         run: |
           sudo apt update
           sudo apt remove -y git git-man

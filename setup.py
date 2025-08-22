@@ -23,7 +23,7 @@ setup(
     entry_points={
         "console_scripts": ["nf-class=nf_class.__main__:run_nf_class"],
     },
-    python_requires=">=3.8, <4",
+    python_requires=">=3.9, <4",
     install_requires=required,
     packages=find_packages(exclude=("docs")),
     include_package_data=True,
