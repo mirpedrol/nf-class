@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import shutil
 import tempfile
@@ -149,7 +150,7 @@ class ClassExpand(nf_core.components.create.ComponentCreate):
 
         directory = Path(self.modules_repo.local_repo_dir) / "classes"
         available_classes = [
-            fn.split(".yml")[0] for _, _, file_names in directory.walk() for fn in file_names if fn.endswith(".yml")
+            fn.split(".yml")[0] for _, _, file_names in os.walk(directory) for fn in file_names if fn.endswith(".yml")
         ]
         return sorted(available_classes)
 
