@@ -27,14 +27,14 @@ click.rich_click.COMMAND_GROUPS = {
         {
             "name": "Commands",
             "commands": [
-                "subworkflows",
+                "classes",
             ],
         },
     ],
-    "nf-class subworkflows": [
+    "nf-class classes": [
         {
-            "name": "Developing new subworkflows",
-            "commands": ["expand-class"],
+            "name": "Working with class subworkflows",
+            "commands": ["expand", "patch"],
         },
     ],
 }
@@ -138,7 +138,7 @@ def nf_class_cli(ctx, verbose, hide_progress, log_file):
     }
 
 
-# nf-class subworkflows
+# nf-class classes
 @nf_class_cli.group()
 @click.option(
     "-g",
@@ -162,7 +162,7 @@ def nf_class_cli(ctx, verbose, hide_progress, log_file):
     help="Do not pull in latest changes to local clone of modules repository.",
 )
 @click.pass_context
-def subworkflows(ctx, git_remote, branch, no_pull):
+def classes(ctx, git_remote, branch, no_pull):
     """
     Commands to manage Nextflow DSL2 subworkflows.
     """
@@ -176,8 +176,8 @@ def subworkflows(ctx, git_remote, branch, no_pull):
     ctx.obj["modules_repo_no_pull"] = no_pull
 
 
-# nf-core subworkflows expand-class
-@subworkflows.command("expand-class")
+# nf-core classes expand
+@classes.command("expand")
 @click.pass_context
 @click.argument("classname", type=str, callback=normalize_case, required=False, default="", metavar="<class_name>")
 @click.option(
@@ -209,7 +209,7 @@ def subworkflows(ctx, git_remote, branch, no_pull):
     default=None,
     help="Name of the modules the subworkflow should expand, separated by commas. If not provided, all available modules for the class will be expanded.",
 )
-def command_subworkflows_expand_class(
+def command_classes_expand(
     ctx,
     classname,
     dir,
@@ -220,10 +220,10 @@ def command_subworkflows_expand_class(
     """
     Create a new DSL2 subworkflow from a class.
     """
-    from nf_class.subworkflows.create import SubworkflowExpandClass
+    from nf_class.classes.expand import ClassExpand
 
     try:
-        create_obj = SubworkflowExpandClass(
+        expand_obj = ClassExpand(
             classname,
             dir,
             author,
@@ -232,7 +232,7 @@ def command_subworkflows_expand_class(
             ctx.obj["modules_repo_url"],
             ctx.obj["modules_repo_branch"],
         )
-        create_obj.expand_class()
+        expand_obj.expand_class()
     except UserWarning as e:
         log.error(e)
         sys.exit(1)
@@ -241,7 +241,7 @@ def command_subworkflows_expand_class(
         sys.exit(1)
 
 
-@subworkflows.command("patch")
+@classes.command("patch")
 @click.pass_context
 @click.argument("classname", type=str, callback=normalize_case, required=False, metavar="<class_name>")
 @click.option(
@@ -252,7 +252,7 @@ def command_subworkflows_expand_class(
     help=r"Modules repository directory. [dim]\[default: current working directory][/]",
     metavar="<directory>",
 )
-def command_subworkflows_patch(
+def command_classes_patch(
     ctx,
     classname,
     dir,
@@ -260,10 +260,10 @@ def command_subworkflows_patch(
     """
     Patch an existing subworkflow compared with the automatically generated one from expand-class.
     """
-    from nf_class.subworkflows.patch import SubworkflowPatch
+    from nf_class.classes.patch import ClassPatch
 
     try:
-        patch_obj = SubworkflowPatch(
+        patch_obj = ClassPatch(
             dir,
             ctx.obj["modules_repo_url"],
             ctx.obj["modules_repo_branch"],
