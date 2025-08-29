@@ -2,8 +2,11 @@ import concurrent.futures
 import logging
 import os
 import re
+from pathlib import Path
+from typing import Optional
 
 import requests
+import ruamel
 from packaging.version import Version
 
 import nf_class
@@ -55,3 +58,31 @@ def check_if_outdated(
         if Version(remote_version) > Version(current_version):
             is_outdated = True
     return (is_outdated, current_version, remote_version)
+
+
+def get_swf_authors(swf_dir: Path) -> Optional[str]:
+    """Get the author of a subworkflow"""
+    yaml = ruamel.yaml.YAML()
+    with open(swf_dir / "meta.yml") as fh:
+        meta_yaml = yaml.load(fh)
+    author = None
+    authors = meta_yaml.get("authors", None)
+    if authors is not None:
+        author = authors[0]
+    return author
+
+
+def get_available_classes(modules_repo, checkout=True, commit=None) -> list:
+    """
+    Get the available classes from the modules repository.
+    """
+    if checkout:
+        modules_repo.checkout_branch()
+    if commit is not None:
+        modules_repo.checkout(commit)
+
+    directory = Path(modules_repo.local_repo_dir) / "classes"
+    available_classes = [
+        fn.split(".yml")[0] for _, _, file_names in os.walk(directory) for fn in file_names if fn.endswith(".yml")
+    ]
+    return sorted(available_classes)

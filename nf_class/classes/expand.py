@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 import shutil
 import tempfile
@@ -86,7 +85,6 @@ class ClassExpand(nf_core.components.create.ComponentCreate):
         self.component_dir = Path(self.component)
 
         # Check existence of directories early for fast-fail
-
         self.file_paths = self._get_component_dirs()
 
         # Prompt for GitHub username
@@ -126,7 +124,7 @@ class ClassExpand(nf_core.components.create.ComponentCreate):
         """
         Prompt for the class name.
         """
-        available_classes = self._get_available_classes()
+        available_classes = nf_class.utils.get_available_classes(self.modules_repo)
         while self.classname is None or self.classname == "":
             self.classname = questionary.autocomplete(
                 "Class name:",
@@ -138,21 +136,6 @@ class ClassExpand(nf_core.components.create.ComponentCreate):
         # Update subworkflow name based on classname
         if self.component_type == "subworkflows":
             self.component = self.classname
-
-    def _get_available_classes(self, checkout=True, commit=None) -> list:
-        """
-        Get the available classes from the modules repository.
-        """
-        if checkout:
-            self.modules_repo.checkout_branch()
-        if commit is not None:
-            self.modules_repo.checkout(commit)
-
-        directory = Path(self.modules_repo.local_repo_dir) / "classes"
-        available_classes = [
-            fn.split(".yml")[0] for _, _, file_names in os.walk(directory) for fn in file_names if fn.endswith(".yml")
-        ]
-        return sorted(available_classes)
 
     def _get_class_info(self) -> None:
         """

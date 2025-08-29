@@ -34,7 +34,7 @@ click.rich_click.COMMAND_GROUPS = {
     "nf-class classes": [
         {
             "name": "Working with class subworkflows",
-            "commands": ["expand", "patch"],
+            "commands": ["expand", "lint", "patch"],
         },
     ],
 }
@@ -233,6 +233,45 @@ def command_classes_expand(
             ctx.obj["modules_repo_branch"],
         )
         expand_obj.expand_class()
+    except UserWarning as e:
+        log.error(e)
+        sys.exit(1)
+    except LookupError as e:
+        log.error(e)
+        sys.exit(1)
+
+
+# nf-core classes lint
+@classes.command("lint")
+@click.pass_context
+@click.argument("classname", type=str, callback=normalize_case, required=False, default=None, metavar="<class_name>")
+@click.option(
+    "-d",
+    "--dir",
+    type=click.Path(exists=True),
+    default=".",
+    help=r"Modules repository directory. [dim]\[default: current working directory][/]",
+    metavar="<directory>",
+)
+def command_classes_lint(
+    ctx,
+    classname,
+    dir,
+):
+    """
+    Lint a class subworkflow.
+    """
+    from nf_class.classes.lint import ClassLint
+
+    try:
+        lint_obj = ClassLint(
+            directory=dir,
+            remote_url=ctx.obj["modules_repo_url"],
+            branch=ctx.obj["modules_repo_branch"],
+        )
+        lint_obj.lint(
+            classname,
+        )
     except UserWarning as e:
         log.error(e)
         sys.exit(1)

@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Optional, Union
 
 import questionary
-import ruamel.yaml
 
 from nf_class.classes.expand import ClassExpand
+from nf_class.utils import get_swf_authors
 from nf_core.components.components_command import ComponentCommand
 from nf_core.components.components_differ import ComponentsDiffer
 from nf_core.utils import nfcore_question_style
@@ -94,13 +94,7 @@ class ClassPatch(ComponentCommand):
             os.remove(patch_path)
 
         # Get info from current subworkflow
-        yaml = ruamel.yaml.YAML()
-        with open(component_current_dir / "meta.yml") as fh:
-            meta_yaml = yaml.load(fh)
-        author = None
-        authors = meta_yaml.get("authors", None)
-        if authors is not None:
-            author = authors[0]
+        author = get_swf_authors(component_current_dir)
 
         # Create a temporary directory for storing the bare generated subworkflow
         install_dir = tempfile.mkdtemp()
