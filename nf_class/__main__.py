@@ -253,10 +253,18 @@ def command_classes_expand(
     help=r"Modules repository directory. [dim]\[default: current working directory][/]",
     metavar="<directory>",
 )
+@click.option(
+    "-a",
+    "--all",
+    is_flag=True,
+    default=False,
+    help=r"Lint all classes",
+)
 def command_classes_lint(
     ctx,
     classname,
     dir,
+    all,
 ):
     """
     Lint a class subworkflow.
@@ -271,6 +279,7 @@ def command_classes_lint(
         )
         lint_obj.lint(
             classname,
+            all_classes=all,
         )
     except UserWarning as e:
         log.error(e)
