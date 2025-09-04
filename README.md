@@ -115,7 +115,7 @@ The patch is required in order to port over the changes once the subworkflow is 
 Running this command will generate a file `<classname>.diff` in the subworkflow directory.
 
 ```bash
-nf-class classes expand <classname>
+nf-class classes patch <classname>
 ```
 
 ### I have added a new module to a class, and I need to modify the subworkflow
