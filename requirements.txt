@@ -1,0 +1,2 @@
+nf-core==3.*
+GitPython

@@ -1,0 +1,4 @@
+[run]
+omit = nf_class/*-template/*
+source = nf_class
+relative_files = True

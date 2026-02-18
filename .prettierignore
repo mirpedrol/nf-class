@@ -1,0 +1,4 @@
+nf_class/subworkflows-template/
+# don't run on things handled by ruff
+*.py
+*.pyc

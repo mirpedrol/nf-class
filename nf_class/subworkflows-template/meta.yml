@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mirpedrol/class-modules/main/subworkflows/yaml-schema.json
+name: "{{ component_name_underscore }}"
+description: {{ description }}
+keywords:
+    {{ keywords }}
+components:
+  {%- for item in components %}
+  - {{ item }}:
+      git_remote: "https://github.com/nf-core/modules.git"
+  {%- endfor %}
+
+{{ inputs_yml_swf }}
+
+{{ outputs_yml_swf }}
+
+authors:
+    - "{{ author }}"
+maintainers:
+    - "{{ author }}"
